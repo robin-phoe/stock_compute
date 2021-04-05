@@ -121,7 +121,7 @@ def draw_k_line(id,inform_type):
     zhuang_grade = zhuang_res[0][1]
     chart_title = '{0} {1} {2} {3}'.format(id, stock_name, bk_name,zhuang_grade)
     sql = "SELECT trade_date,open_price,close_price,high_price,low_price  FROM stockdb.stock_history_trade{0} \
-            where trade_date >= '{1}' and trade_date <= '{2}' and  stock_id = '{3}'".format(h_tab, '2019-01-01', end_date,
+            where trade_date >= '{1}' and trade_date <= '{2}' and  stock_id = '{3}'".format(h_tab, '2020-01-01', end_date,
                                                                                             id)
     df = get_df_from_db(sql)
     cursor.close()
