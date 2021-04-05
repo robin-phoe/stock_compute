@@ -109,7 +109,7 @@ def save(db,df):
     for i in range(len(df)):
         trade_date = str(df.loc[i,'trade_date'])
         stock_id = df.loc[i,'stock_id']
-        trade_code = re.sub('-','',trade_date) + stock_id
+        trade_code = re.sub('-','',trade_date[0:10]) + stock_id
         stock_name = df.loc[i,'stock_name']
         grade = df.loc[i,'grade']
         sql = "insert into remen_xiaoboxin(trade_code,trade_date,stock_id,stock_name,grade) \
