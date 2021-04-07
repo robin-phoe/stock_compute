@@ -157,6 +157,6 @@ def run(date):
     p.join()
     #print('All subprocesses done.')
 if __name__ == '__main__':
-    date ='2021-04-02'#'2021-02-01' #'2021-01-20'
+    date ='2021-04-07'#'2021-02-01' #'2021-01-20'
     # main(date, h_tab = '1')
     run(date)

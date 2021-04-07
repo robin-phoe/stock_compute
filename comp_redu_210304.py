@@ -232,7 +232,7 @@ def test_apply():
     #print('end_time:', datetime.datetime.now() - init_time)
     #print('df:',df)
 if __name__ == '__main__':
-    date ='2021-04-02'#None#'2021-02-01' #'2021-01-20'
+    date =None#'2021-02-01' #'2021-01-20'
     run(date)
 
     # h_tab = '2'
