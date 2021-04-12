@@ -107,7 +107,7 @@ def get_data(table,stock_id,cursor,db):
         logging.error('存储失败:id:{},name:{}\n{}\n{}'.format(datas[0][0],datas[0][1],data_list,err))
 
 def make_one_table(table):
-    db = pymysql.connect("localhost","root","Zzl08382020","stockdb" )
+    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
@@ -130,8 +130,8 @@ def run():
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    run()
-    #make_one_table(10)
+    # run()
+    make_one_table(1)
     # p = Pool(8)
     # for i in range(1,11):
     #     p.apply_async(make_one_table, args=(i,))
