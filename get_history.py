@@ -24,10 +24,10 @@ def select_info(table,cursor,db):
     return stock_id_list
 def get_data(table,stock_id,cursor,db):
     if stock_id[0]=='6':
-        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.{}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=20201001&end=20220101&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id)
+        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.{}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=20181001&end=20220101&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id)
         url2="http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&fltt=2&invt=2&volt=2&fields=f58,f84,f85&secid=1.{}".format(stock_id)
     elif stock_id[0]=='0':
-        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.{}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=20201001&end=20220101&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id)
+        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.{}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=20181001&end=20220101&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id)
         url2="http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&fltt=2&invt=2&volt=2&fields=f58,f84,f85&secid=0.{}".format(stock_id)
     else:
         return 0
