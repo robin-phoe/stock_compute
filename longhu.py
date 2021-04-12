@@ -13,7 +13,7 @@ import datetime
 logging.basicConfig(level=logging.DEBUG,filename='longhu_trade.log',filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
-db = pymysql.connect("localhost","root","Zzl08382020","stockdb" )
+db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 # def make_date(date):
 #     if date == None:
 #         date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -38,6 +38,8 @@ def get_longhu(date):
         for stock in data_list:
             trade_date = re.sub('-','',stock['Tdate'])
             shangbang_id =trade_date  + stock['SCode']
+            if stock['Ltsz'] == '':
+                stock['Ltsz'] =0
             try:
                 sql = "insert into longhu_info(shangbang_id,stock_code,stock_name,trade_date,jmmoney,bmoney," \
                       "smoney,lh_trade_money,all_trade_money,reson,jmrate,all_trade_rate,turnover,lt_value,jd) " \
@@ -72,6 +74,6 @@ def get_history(start,end):
     for date in date_list:
         get_longhu(date)
 if __name__ == "__main__":
-    date = '2021-04-08'#None #'2020-12-11'
-    get_longhu(date)
-    # get_history('2020-12-29', '2020-01-08')
+    # date = '2021-04-12'#None #'2020-12-11'
+    # get_longhu(date)
+    get_history('2020-12-29', '2021-04-12')

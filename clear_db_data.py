@@ -47,7 +47,7 @@ def make_data(df,db,h_table):
             print('存储失败:', err)
     cursor.close()
 def main(h_table):
-    db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
     sql = "select distinct stock_id from stock_history_trade{0}".format(h_table)
     cursor.execute(sql)  # 执行SQL语句

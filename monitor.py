@@ -15,7 +15,7 @@ import re
 logging.basicConfig(level=logging.DEBUG, filename='monitor.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
-db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 #登录微信
 bot = Bot(cache_path=True)
 monitor_info_dict = {}
