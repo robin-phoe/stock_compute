@@ -34,6 +34,11 @@ def get_df_from_db(sql, db):
 #     cursor.close()
 #     return stock_id_list
 def git_base_info(db):
+    #清除原数据
+    sql = "delete from stock_informations"
+    cursor = db.cursor()
+    cursor.execute(sql)
+    cursor.close()
     for num in range(0,1000):
         num_str = '{:0>3d}'.format(num)
         stock_id =  '600' + num_str
@@ -83,15 +88,16 @@ def get_data(stock_id,db):
         fxl = float(fxl)
     qy=re.findall('"qy":"(.*?)"',text)[0]
     mgfxj=re.findall('"mgfxj":"(.*?)"',text)[0]
+    h_table = stock_id[-1]
     #print('cym:',cym,dchy,zjhy,gyrs,gsjj,jyfw,ssrq,'fxl:',fxl,qy)
     try:
         sql = "insert into stock_informations(stock_id,stock_name,发行量,bk_name,证监会行业," \
-              "上市日期,曾用名,每股发行价,区域,雇员人数,经营范围,公司简介) " \
-              "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}')" \
+              "上市日期,曾用名,每股发行价,区域,雇员人数,经营范围,公司简介,h_table) " \
+              "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}')" \
               "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',发行量='{2}',bk_name='{3}'," \
               "证监会行业='{4}',上市日期='{5}',曾用名='{6}',每股发行价='{7}',区域='{8}',雇员人数='{9}',经营范围='{10}'" \
-              ",公司简介='{11}'" \
-            .format(stock_id,agjc,fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj)
+              ",公司简介='{11}',h_table='{12}'" \
+            .format(stock_id,agjc,fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,h_table)
         # sql="update stock_informations set 发行量={0},bk_name='{1}', 证监会行业='{2}', 上市日期='{3}', 曾用名='{4}', 每股发行价='{5}', 区域='{6}', \
         #     雇员人数='{7}', 经营范围='{8}', 公司简介='{9}' where stock_id = '{10}'\
         #     ".format(fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,stock_id)
@@ -105,15 +111,16 @@ def get_data(stock_id,db):
         print('存储失败:',err)
         logging.error('存储失败:id:{},{}'.format(stock_id,err))
     cursor.close()
-def deal_info(db):
-    sql = "select * from stock_informations"
-    df = get_df_from_db(sql, db)
-    df = df.reset_index()
-    df['h_table'] = df['index'].apply(lambda x:x%10)
-    cursor = db.cursor()
-    for i in range(len(df)):
-        sql = ""
-    cursor.close()
+# def deal_info(db):
+#     sql = "select * from stock_informations"
+#     df = get_df_from_db(sql, db)
+#     df = df.reset_index()
+#     df['h_table'] = df['stock_id'].apply(lambda x:x%10)
+#     cursor = db.cursor()
+#     for i in range(len(df)):
+#         sql = "update stock_informations set h_table = '{}'".format(df.loc[i,'h_table'])
+#         cursor.execute(sql)
+#     cursor.close()
 def update_other_tab(db):
     #历史记录分表
     for i in range(0,10):
@@ -129,11 +136,17 @@ def update_other_tab(db):
         stock_id = df.loc[i, 'stock_id']
         h_table = df.loc[i, 'h_table']
         for tab in table_list:
-            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab,)
-
+            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab,stock_name,bk_name,
+                                                                                                stock_id)
+            cursor.execute(sql)
+        #update history table
+        tab = 'stock_history_trade'+str(i)
+        sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name, bk_name,
+                                                                                            stock_id)
+        cursor.execute(sql)
     cursor.close()
 
-def main():
+def main(update_flag = 0):
     db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
     #get_data(stock_id='603828')#000790
@@ -144,11 +157,17 @@ def main():
     # for stock in stock_id_list:
     #     print('stock[0]:',stock[0])
     #     get_data(stock[0],db)
-    git_base_info(db)
+    if update_flag ==1:
+        update_other_tab(db)
+        git_base_info(db)
+    elif update_flag == 0:
+        git_base_info(db)
+    elif update_flag == 2:
+        update_other_tab(db)
 
 
 
 if __name__ == '__main__':
-    main()
+    main(update_flag = 0)
 
 

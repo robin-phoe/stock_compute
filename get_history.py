@@ -11,7 +11,7 @@ import logging
 #import threading
 from multiprocessing import Pool
 
-logging.basicConfig(level=logging.DEBUG,filename='stock_history_trade.log',filemode='w',
+logging.basicConfig(level=logging.DEBUG,filename='get_history_trade.log',filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 
@@ -44,7 +44,8 @@ def get_data(table,stock_id,cursor,db):
         return 0
     #print(datas)
     data_days_list=datas[0][2].split('","')
-    val=[]
+    val_insert=[]
+    val_update = []
     #print('data_days_list:',data_days_list)
     if len(data_days_list[0])==0 or len(res_capital)==0:
         logging.error('data_days_list or res_capital is null:{},{}'.format(data_days_list,res_capital))
@@ -62,7 +63,11 @@ def get_data(table,stock_id,cursor,db):
         turnover_rate=float(data_list[5])/float(res_capital[0][1])*100
         #print('turnover_rate:',turnover_rate)
         #print('all:',trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],turnover_rate)
-        val.append((trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],turnover_rate,trade_code))
+        val_update.append((trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],
+                           data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],turnover_rate,trade_code))
+        val_insert.append((trade_code, datas[0][0], datas[0][1], data_list[0], data_list[1], data_list[2], data_list[3],
+                           data_list[4], data_list[5], data_list[6], res_capital[0][1], res_capital[0][0],
+                           turnover_rate))
         #val=((trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],str(turnover_rate)),)
         '''
         try:
@@ -78,25 +83,20 @@ def get_data(table,stock_id,cursor,db):
             print('存储失败:',err)
             logging.error('存储失败:id:{},name:{}\n{}\n{}'.format(datas[0][0],datas[0][1],data_list,err))
         '''
-        #print('val:',val)
+        # print('val_insert:',val_insert)
+        # print('val_update:', val_update)
     try:
     #if 1:
         #取新值
-        sql="replace into stock_history_trade{}(trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price,trade_amount,trade_money,circulation,capital_stock,turnover_rate) \
+        sql="insert into stock_history_trade{}(trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price," \
+            "low_price,trade_amount,trade_money,circulation,capital_stock,turnover_rate) \
             values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)".format(table)
-        '''% \
-            (trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],str(turnover_rate))
-        '''
-        '''
-        sql="insert into stock_history_trade{13}(trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price,trade_amount,trade_money,circulation,capital_stock,turnover_rate) \
-                values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}')"
-        '''
+        cursor.executemany(sql, val_insert)
         #更新
-        sql = "update stock_history_trade{} set trade_code=%s,stock_id=%s,stock_name=%s,trade_date=%s,open_price=%s,close_price=%s," \
-              "high_price=%s,low_price=%s,trade_amount=%s,trade_money=%s,circulation=%s,capital_stock=%s,turnover_rate=%s where trade_code=%s ".format(table)
-        #print('tuple(val):',val)
-        #print('tuple(sql):',sql)
-        cursor.executemany(sql,val)
+        # sql = "update stock_history_trade{} set trade_code=%s,stock_id=%s,stock_name=%s,trade_date=%s,open_price=%s,close_price=%s," \
+        #       "high_price=%s,low_price=%s,trade_amount=%s,trade_money=%s,circulation=%s,capital_stock=%s,turnover_rate=%s where trade_code=%s ".format(table)
+        # cursor.executemany(sql,val_update)
+
         db.commit()
         print('存储完成')
         logging.info('存储完成:id:{},name:{}'.format(datas[0][0],datas[0][1]))
@@ -109,6 +109,11 @@ def get_data(table,stock_id,cursor,db):
 def make_one_table(table):
     db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
+    #清除原数据
+    h_table = "stock_history_trade{}".format(table)
+    sql = "delete from {}".format(h_table)
+    cursor.execute(sql)
+    print('已清除原数据')
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
     stock_id_list=select_info(table,cursor,db)
@@ -122,7 +127,7 @@ def make_one_table(table):
 
 def run():
     p = Pool(8)
-    for i in range(1,11):
+    for i in range(0,10):
         p.apply_async(make_one_table, args=(i,))
     print('Waiting for all subprocesses done...')
     p.close()
@@ -130,8 +135,9 @@ def run():
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    # run()
-    make_one_table(1)
+    run()
+    # make_one_table(1)
+
     # p = Pool(8)
     # for i in range(1,11):
     #     p.apply_async(make_one_table, args=(i,))
