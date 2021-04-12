@@ -3,6 +3,7 @@ import pymysql
 from multiprocessing import Pool
 import pandas as pd
 import numpy as np
+import logging
 
 logging.basicConfig(level=logging.DEBUG,filename='clear_db_data.log',filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
