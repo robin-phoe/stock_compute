@@ -50,9 +50,14 @@ def deal_data(lastest_day):
         stock_l.append(lastest_day)
         stock_list[i] = tuple(stock_l)
     print('stock_list:',stock_list)
-    insert_sql = "insert into monitor (stock_id,stock_name,grade,reason,trade_code,trade_date) values (%s,%s,%s,%s,%s,%s)"
+    del_sql = "delete from monitor where trade_date = '{}'".format(lastest_day)
+    cursor.execute(del_sql)
+    db.commit()
+    print('{}：清除成功'.format(lastest_day))
+    insert_sql = "insert into monitor (stock_id,stock_name,grade,monitor_type,trade_code,trade_date) values (%s,%s,%s,%s,%s,%s)"
     cursor.executemany(insert_sql, stock_list)
     db.commit()
+    print('{}：存储成功'.format(lastest_day))
     cursor.close()
 def main():
     lastest_day = sel_lastest_day()

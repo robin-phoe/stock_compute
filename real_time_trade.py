@@ -114,9 +114,15 @@ def run():
 if __name__ == '__main__':
     # run()
     i=0
+    flush_flag = 1
     while True:
         time_now = datetime.datetime.now().strftime("%H:%M:%S")
-        if time_now >= "09:30:00":
+        if flush_flag ==1:
+            r.flushdb()
+            print('已清空redis')
+            flush_flag = 0
+        elif time_now >= "09:26:00" and time_now <= "15:30:00":
+            flush_flag = 1
             time1 = datetime.datetime.now()
             # main()
             run()
