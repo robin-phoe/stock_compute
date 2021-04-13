@@ -42,15 +42,25 @@ def git_base_info(db):
     for num in range(0,1000):
         num_str = '{:0>3d}'.format(num)
         stock_id =  '600' + num_str
-        print('stock_id:',stock_id)
+        get_data(stock_id, db)
+        stock_id =  '601' + num_str
+        # print('stock_id:',stock_id)
+        get_data(stock_id, db)
+        stock_id =  '603' + num_str
+        get_data(stock_id, db)
+        stock_id =  '688' + num_str
         get_data(stock_id, db)
         stock_id =  '002' + num_str
+        get_data(stock_id, db)
+        stock_id =  '000' + num_str
+        get_data(stock_id, db)
+        stock_id =  '300' + num_str
         get_data(stock_id, db)
 def get_data(stock_id,db):
     cursor = db.cursor()
     if stock_id[0]=='6':
         url = "http://f10.eastmoney.com/CompanySurvey/CompanySurveyAjax?code=SH{}".format(stock_id)
-    elif stock_id[0]=='0' :
+    elif stock_id[0]=='0' or stock_id[0]=='3':
         url = "http://f10.eastmoney.com/CompanySurvey/CompanySurveyAjax?code=SZ{}".format(stock_id)
     else:
         return 0
