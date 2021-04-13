@@ -62,7 +62,7 @@ def get_data(table,stock_id,cursor,db):
         data_str=re.sub('-','',data_list[0])
         trade_code=data_str+datas[0][0]
         turnover_rate=float(data_list[5])/float(res_capital[0][1])*10000
-        print('turnover_rate:',float(data_list[5]),float(res_capital[0][1]),turnover_rate)
+        # print('turnover_rate:',float(data_list[5]),float(res_capital[0][1]),turnover_rate)
         #print('all:',trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],turnover_rate)
         val_update.append((trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],
                            data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],turnover_rate,trade_code))
@@ -136,8 +136,8 @@ def run():
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    # run()
-    make_one_table(1)
+    run()
+    # make_one_table(1)
     # p = Pool(8)
     # for i in range(1,11):
     #     p.apply_async(make_one_table, args=(i,))
