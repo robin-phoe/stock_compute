@@ -61,7 +61,7 @@ def get_data(table,stock_id,cursor,db):
         #print(datas[0][0],datas[0][1],data_list)
         data_str=re.sub('-','',data_list[0])
         trade_code=data_str+datas[0][0]
-        turnover_rate=float(data_list[5])/float(res_capital[0][1])*100
+        turnover_rate=float(data_list[5])/float(res_capital[0][1])*10000
         print('turnover_rate:',float(data_list[5]),float(res_capital[0][1]),turnover_rate)
         #print('all:',trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],data_list[5],data_list[6],res_capital[0][1],res_capital[0][0],turnover_rate)
         val_update.append((trade_code,datas[0][0],datas[0][1],data_list[0],data_list[1],data_list[2],data_list[3],data_list[4],

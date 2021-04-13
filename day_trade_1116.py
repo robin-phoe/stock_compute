@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.DEBUG,filename='stock_day_trade1.log',filemode
 with open('stock_day_trade1.log','r') as f:
     f.read()
     print(f)
-db = pymysql.connect("localhost","root","Zzl08382020","stockdb" )
+db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 cursor = db.cursor()
 count=0
 
