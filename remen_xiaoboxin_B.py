@@ -10,23 +10,17 @@
 #五、振荡波形--偏离度 当前价与20日均线偏差值（分数为二次拱形函数）
 #*
 #目前不包含688
-import mpl_finance
+
 # import tushare as ts
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import pymysql
-from matplotlib import ticker
-from matplotlib.pylab import date2num
-import numpy as np
 import datetime
 import logging
 import re
 from multiprocessing import Pool
 import json
-import openpyxl
 import copy
-
+import numpy as np
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
@@ -100,6 +94,7 @@ def core(df,date):
     df['avg_low_flag'] =-(df['bais']*100 - 15) * 1000
     #计算分数
     df['grade'] = df['avg_5_flag'] + df['avg_low_flag']
+    df.drop(df[np.isnan(df['grade'])].index, inplace=True)
     df.sort_values(axis=0, ascending=False, by='grade', na_position='last', inplace=True)
     df.reset_index(inplace=True)
     print('df:', df[['stock_id','stock_name','trade_date','grade','avg_5_flag','avg_low_flag','bais']])
@@ -135,7 +130,7 @@ def main(date,h_tab):
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     # day_delta = 40
-    db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
     #test 作为单个账号历史数据测试
     # sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_history_trade{0} " \
@@ -157,6 +152,6 @@ def run(date):
     p.join()
     #print('All subprocesses done.')
 if __name__ == '__main__':
-    date ='2021-04-07'#'2021-02-01' #'2021-01-20'
+    date =None#'2021-02-01' #'2021-01-20'
     # main(date, h_tab = '1')
     run(date)

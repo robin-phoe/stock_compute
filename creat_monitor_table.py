@@ -10,7 +10,7 @@ import re
 
 logging.basicConfig(level=logging.DEBUG, filename='creat_monitor_table.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
-db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 #记录需要查询的类型表及SQL
 table_dict = {}
 table_code = {'zhuang':'1','remen_xiaoboxin':'2'}
@@ -21,7 +21,7 @@ def creat_sql(trade_date):
                            ' AND monitor = 1'
     table_dict['remen_xiaoboxin'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin" ' \
                                    'FROM remen_xiaoboxin ' \
-                                   'WHERE trade_date = "{0}" AND grade >= -100000 AND monitor = 1 '.format(trade_date)
+                                   'WHERE trade_date = "{0}" AND grade >= 0 AND monitor = 1 '.format(trade_date)
 def sel_lastest_day():
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
     sql  = "select max(trade_date) from stock_history_trade1"

@@ -1,19 +1,13 @@
 # coding:utf-8
-import mpl_finance
 # import tushare as ts
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import pymysql
-from matplotlib import ticker
-from matplotlib.pylab import date2num
 import numpy as np
 import datetime
 import logging
 import re
 from multiprocessing import Pool
 import json
-import openpyxl
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
@@ -129,7 +123,7 @@ def main(h_tab,date):
         date = datetime.datetime.now().strftime('%Y-%m-%d')
     date_time = datetime.datetime.strptime(date,'%Y-%m-%d')
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
-    db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
     zhangting_df = com_redu2(db,h_tab,date,delta = 30)
     #print('len4:', len(zhangting_df))
@@ -190,7 +184,7 @@ def run(date):
     p.join()
     #print('All subprocesses done.')
 def history_com(h_tab,start_date,end_date):
-    db_h = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+    db_h = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db_h.cursor()
     sql = "select distinct(trade_date) from stock_history_trade1 where trade_date >= '{0}' and trade_date <= '{1}'".format(start_date,end_date)
     cursor.execute(sql)
@@ -210,7 +204,7 @@ def run_h(start_date,end_date):
     p.join()
     #print('All subprocesses done.')
 def test_apply():
-    db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
     sql = "select stock_id,trade_date,open_price,close_price,high_price,low_price,increase from stock_history_trade1 where trade_date >= '2021-01-01' and trade_date <= '2021-03-04'".format()
     init_time = datetime.datetime.now()
