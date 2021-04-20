@@ -16,7 +16,6 @@ logging.basicConfig(level=logging.DEBUG,filename='stock_base_tushare.log',filemo
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 #初始化tushare api
-pro = ts.pro_api()
 pro = ts.pro_api('87b1df604b58eac3662ebaeabe6bb3436792125d2bf1f73a4a11f06a')
 def git_base_info(db):
     #清除原数据

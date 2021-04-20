@@ -39,6 +39,7 @@ def write_init_data():
         # 写入信息字典
         monitor_info_dict[stock[0]] = stock
     print('monitor_list_len:',len(monitor_info_dict))
+    cursor.close()
 def wx_send_message(message,image_path):
     global bot
     # my_groups = bot.groups().search(u'7个涨停翻一番')[0]
@@ -89,6 +90,8 @@ def draw_k_line(id,inform_type):
     sql ="select zhuang_section,zhuang_grade from com_zhuang where stock_id = {}".format(id)
     cursor.execute(sql)
     zhuang_res= cursor.fetchall()
+    if len(zhuang_res) == 0:
+        return ''
     zhuang_section =  zhuang_res[0][0]
     zhuang_grade = zhuang_res[0][1]
     chart_title = '{0} {1} {2} {3}'.format(id, stock_name, bk_name,zhuang_grade)
@@ -167,6 +170,8 @@ def monitor_core_increase(id):
     else:
         return
     #wx send
+    if draw_k_line(id,inform_type) == '':
+        return
     message, image_path = draw_k_line(id,inform_type)
     message = monitor_type +':'+ message + increase
     wx_send_message(message, image_path)

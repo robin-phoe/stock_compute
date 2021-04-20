@@ -111,10 +111,11 @@ def make_one_table(table):
     db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
     #清除原数据
-    h_table = "stock_history_trade{}".format(table)
-    sql = "delete from {}".format(h_table)
-    cursor.execute(sql)
-    print('已清除原数据')
+    # h_table = "stock_history_trade{}".format(table)
+    # sql = "delete from {}".format(h_table)
+    # cursor.execute(sql)
+    # print('已清除原数据')
+
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
     stock_id_list=select_info(table,cursor,db)

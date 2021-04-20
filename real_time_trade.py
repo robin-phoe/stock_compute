@@ -39,7 +39,7 @@ def getOnePageStock(page):
     response = requests.get(url,headers=header)
     text=response.text
     result = re.findall('\[.*?\]', text)
-    # print('result:',result)
+    print('result:',page,result)
     if len(result) == 0:
         return 0
     else:
@@ -100,10 +100,11 @@ def main():
     while flag:
         # print('page:',page)
         flag = getOnePageStock(str(page))
+        print('flag:',flag)
         page = int(page) + 1
 def run():
     p = Pool(8)
-    for i in range(220 ):
+    for i in range(220):
         p.apply_async(getOnePageStock, args=(str(i),))
     #    p.apply_async(main, args=('1',date,))
     #print('Waiting for all subprocesses done...')
@@ -113,6 +114,7 @@ def run():
     # print('All subprocesses done.')
 if __name__ == '__main__':
     # run()
+    # main()
     i=0
     flush_flag = 1
     while True:
