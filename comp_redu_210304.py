@@ -32,28 +32,27 @@ def get_df_from_db(sql, db):
     # #print('df:', df[['avg_10', 'close_price']])
     return df
 #计算龙虎榜热度
-def com_redu1(db,date,h_tab,delta = 30):
+def com_redu1(db,date,delta = 30):
     end_date = datetime.datetime.strptime(date, "%Y-%m-%d")
     start_date = (end_date - datetime.timedelta(days=delta)).strftime("%Y-%m-%d")
     sql = "select L.stock_code,count(L.jmrate)*10000 as longhu_count from longhu_info L " \
-          "left join stock_informations I on L.stock_code  = I.stock_id " \
           "where  " \
-          "trade_date >= '{0}' and trade_date <= '{1}'and reson not like '退市%' and I.h_table = '{2}' " \
-          "group by stock_code".format(start_date,date,h_tab)
+          "trade_date >= '{0}' and trade_date <= '{1}'and reson not like '退市%' " \
+          "group by stock_code".format(start_date,date)
     longhu_df = get_df_from_db(sql, db)
     return longhu_df
 #计算涨停热度
-def com_redu2(db,h_tab,date,delta = 30):
+def com_redu2(db,date,delta = 30):
     end_date = datetime.datetime.strptime(date, "%Y-%m-%d")
     start_date = (end_date - datetime.timedelta(days=delta)).strftime("%Y-%m-%d")
-    sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_history_trade{0} " \
-          "where trade_date >= '{1}' and trade_date <= '{2}' and stock_id not like '688%'".format(h_tab,start_date,date)
+    sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_trade_data " \
+          "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%'".format(start_date,date)
     zhangting_df = get_df_from_db(sql, db)
     zhangting_df['increase_flag'] = zhangting_df['increase'].apply(lambda x: 10000 if x >= 9.75 else 0)
     zhangting_count_df = zhangting_df.groupby('stock_id',as_index=False)['increase_flag'].sum()
     # print('zhangting_count_df:',zhangting_count_df)
     # 求涨停与龙虎热度和
-    longhu_df = com_redu1(db, date,h_tab , delta=30)
+    longhu_df = com_redu1(db, date, delta=30)
     # #print('longhu_df:', longhu_df)
     longhu_df = longhu_df.rename(columns={'stock_code':'stock_id'})
     # print('longhu_df:', longhu_df)
@@ -65,8 +64,8 @@ def com_redu2(db,h_tab,date,delta = 30):
     print('redu_df_len:',len(redu_df))
     #求5日均值
     start_date = (end_date - datetime.timedelta(days=10)).strftime("%Y-%m-%d")
-    sql = "select stock_id,trade_date,close_price,increase from stock_history_trade{0} " \
-          "where trade_date >= '{1}' and trade_date <= '{2}' and stock_id not like '688%'".format(h_tab,start_date,date)
+    sql = "select stock_id,trade_date,close_price,increase from stock_trade_data " \
+          "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%'".format(start_date,date)
     zhangting_avg_df = get_df_from_db(sql, db)
     zhangting_avg_df.set_index(['trade_date'],inplace=True)
     zhangting_avg_df = zhangting_avg_df.groupby('stock_id')['close_price'].rolling(5).mean()
@@ -116,7 +115,7 @@ def find_max(df):
         return False
     else:
         return True
-def main(h_tab,date):
+def main(date):
     init_time = datetime.datetime.now()
     #print('init_time:',init_time)
     if date == None:
@@ -125,7 +124,7 @@ def main(h_tab,date):
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db.cursor()
-    zhangting_df = com_redu2(db,h_tab,date,delta = 30)
+    zhangting_df = com_redu2(db,date,delta = 30)
     #print('len4:', len(zhangting_df))
     zhangting_df = zhangting_df.reset_index()
     redu_init = 0
@@ -139,8 +138,8 @@ def main(h_tab,date):
         redu_5 = 0
         trade_code = re.sub('-', '', date[0:10]) + ids
         if zhangting_df.loc[i,'low_flag'] >= 0:
-            sql = "SELECT stock_id,trade_date,open_price,close_price,high_price,low_price,increase  FROM stock_history_trade{0} \
-                where trade_date >= '{1}' and trade_date <= '{2}' and  stock_id  = '{3}'".format(h_tab, start_t, date,
+            sql = "SELECT stock_id,trade_date,open_price,close_price,high_price,low_price,increase  FROM stock_trade_data \
+                where trade_date >= '{0}' and trade_date <= '{1}' and  stock_id  = '{2}'".format( start_t, date,
                                                                                                  ids)
             df = get_df_from_db(sql, db)
             #print('df:', df['trade_date'])
@@ -157,21 +156,22 @@ def main(h_tab,date):
             #print('redu_grade:',redu_grade,redu_5)
             redu_init = com_redu_init(redu_grade, df)
         #print('time_flag4:', datetime.datetime.now() - init_time)
+        h_table = ids[-1]
         sql = "insert into com_redu_test(trade_code,trade_date,stock_id,stock_name,redu,redu_5,avg_5,h_table,redu_init) \
             values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',trade_date='{1}',stock_id='{2}',stock_name='{3}'," \
               "redu ='{4}',redu_5 ='{5}',avg_5='{6}',h_table = '{7}',redu_init = '{8}'\
-            ".format(trade_code, date, ids, stock_name, redu_grade, redu_5, float(avg_5), h_tab, redu_init)
+            ".format(trade_code, date, ids, stock_name, redu_grade, redu_5, float(avg_5), h_table, redu_init)
         #print('sql:', sql)
         cursor.execute(sql)
         #print('time_flag5:', datetime.datetime.now() - init_time)
     try:
         db.commit()
-        #print('存储完成')
+        print('存储完成')
         logging.info('存储完成')
     except Exception as err:
         db.rollback()
-        #print('存储失败:', err)
+        print('存储失败:', err)
         logging.error('存储失败:{}'.format(err))
     cursor.close()
 def run(date):
@@ -183,7 +183,7 @@ def run(date):
     p.close()
     p.join()
     #print('All subprocesses done.')
-def history_com(h_tab,start_date,end_date):
+def history_com(start_date,end_date):
     db_h = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
     cursor = db_h.cursor()
     sql = "select distinct(trade_date) from stock_history_trade1 where trade_date >= '{0}' and trade_date <= '{1}'".format(start_date,end_date)
@@ -193,7 +193,7 @@ def history_com(h_tab,start_date,end_date):
     for date_t in date_list:
             date = date_t[0].strftime('%Y-%m-%d')
             #print(date)
-    main(h_tab,date)
+    main(date)
 def run_h(start_date,end_date):
     p = Pool(8)
     for i in range(1, 11):
@@ -227,12 +227,12 @@ def test_apply():
     #print('df:',df)
 if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
-    run(date)
+    # run(date)
 
     # h_tab = '2'
-    # main(h_tab, date)
+    main( date)
 
-    # history_com(h_tab,start_date='2020-01-01', end_date='2021-01-19')
+    # history_com(start_date='2020-01-01', end_date='2021-01-19')
     # run_h(start_date='2020-07-31', end_date='2021-02-22')
 
     # test_apply()
