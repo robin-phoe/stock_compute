@@ -5,14 +5,11 @@ http://quote.eastmoney.com/center
 #coding=utf-8
 import requests
 import re
-import pymysql
 #import pandas as pd
-import logging
 #import threading
-from multiprocessing import Pool
-from clear_db_data import *
+from get_trade_data.clear_db_data import *
 
-logging.basicConfig(level=logging.DEBUG,filename='get_history_trade.log',filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../get_history_trade.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 

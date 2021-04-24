@@ -12,7 +12,7 @@ import json
 import time
 import tushare as ts
 
-logging.basicConfig(level=logging.DEBUG,filename='stock_base_tushare.log',filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../stock_base_tushare.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 #初始化tushare api

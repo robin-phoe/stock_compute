@@ -12,7 +12,7 @@ import json
 pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
-logging.basicConfig(level=logging.DEBUG, filename='comp_redu_210304.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../comp_redu_210304.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 def get_df_from_db(sql, db):

@@ -11,7 +11,7 @@ import logging
 #import threading
 import json
 
-logging.basicConfig(level=logging.DEBUG,filename='stock_history_trade.log',filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../stock_history_trade.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 

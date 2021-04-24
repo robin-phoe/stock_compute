@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import logging
 
-logging.basicConfig(level=logging.DEBUG,filename='clear_db_data.log',filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../clear_db_data.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 def get_df_from_db(sql, db):
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标

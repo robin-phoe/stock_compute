@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import re
 
-logging.basicConfig(level=logging.DEBUG, filename='creat_monitor_table.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../creat_monitor_table.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 #记录需要查询的类型表及SQL

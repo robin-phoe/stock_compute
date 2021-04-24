@@ -21,12 +21,13 @@ from multiprocessing import Pool
 import json
 import copy
 import numpy as np
+from readconfig import read_config
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
 
-logging.basicConfig(level=logging.DEBUG, filename='remen_xiaoboxin_B.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../remen_xiaoboxin_B.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 def get_df_from_db(sql, db):
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
@@ -130,7 +131,10 @@ def main(date):
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     # day_delta = 40
-    db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
+    db_config = read_config('db_config')
+    print(db_config)
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
+    # db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
     #test 作为单个账号历史数据测试
     # sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_history_trade{0} " \
@@ -159,6 +163,6 @@ def run(date):
     p.join()
     #print('All subprocesses done.')
 if __name__ == '__main__':
-    date =None#'2021-02-01' #'2021-01-20'
+    date ='2021-04-24'#None#'2021-02-01' #'2021-01-20'
     main(date)
     # run(date)
