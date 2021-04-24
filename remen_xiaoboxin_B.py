@@ -97,7 +97,7 @@ def core(df,date):
     df.drop(df[np.isnan(df['grade'])].index, inplace=True)
     df.sort_values(axis=0, ascending=False, by='grade', na_position='last', inplace=True)
     df.reset_index(inplace=True)
-    print('df:', df[['stock_id','stock_name','trade_date','grade','avg_5_flag','avg_low_flag','bais']])
+    # print('df:', df[['stock_id','stock_name','trade_date','grade','avg_5_flag','avg_low_flag','bais']])
     return df
 def save(db,df):
     cursor = db.cursor()
@@ -124,7 +124,7 @@ def save(db,df):
         print('存储失败:', err)
         logging.error('存储失败:{}'.format(err))
     cursor.close()
-def main(date,h_tab):
+def main(date):
     if date == None:
         date = datetime.datetime.now().strftime('%Y-%m-%d')
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
@@ -136,15 +136,22 @@ def main(date,h_tab):
     # sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_history_trade{0} " \
     #       "where trade_date <= '{1}' and stock_id not like '688%' " \
     #       "and stock_id = '002407' order by trade_date DESC limit {2} ".format(h_tab,date,day_delta)
-    sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_history_trade{0} " \
-          "where trade_date >= '{1}' and trade_date <= '{2}' and stock_id not like '688%' ".format(h_tab,start_t,date)#and stock_id in ('002940','000812')
+    # sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_history_trade{0} " \
+    #       "where trade_date >= '{1}' and trade_date <= '{2}' and stock_id not like '688%' ".format(h_tab,start_t,date)#and stock_id in ('002940','000812')
+    # sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_trade_data " \
+    #       "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%' ".format(start_t,date)#and stock_id in ('002940','000812')
+    sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_trade_data " \
+          "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%' ".format(start_t,date)#and stock_id in ('002940','000812')
+    time_start = datetime.datetime.now()
     df = get_df_from_db(sql, db)
-    # print('df:',df)
+    time_end = datetime.datetime.now()
+    print('df_len:',len(df))
+    print('time_delta:',time_end - time_start )
     df = core(df, date)
     save(db, df)
 def run(date):
     p = Pool(8)
-    for i in range(1, 11):
+    for i in range(0, 10):
         p.apply_async(main, args=(date,str(i),))
     #    p.apply_async(main, args=('1',date,))
     #print('Waiting for all subprocesses done...')
@@ -153,5 +160,5 @@ def run(date):
     #print('All subprocesses done.')
 if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
-    # main(date, h_tab = '1')
-    run(date)
+    main(date)
+    # run(date)
