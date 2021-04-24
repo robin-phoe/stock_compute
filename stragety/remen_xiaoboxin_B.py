@@ -22,7 +22,8 @@ import json
 import copy
 import numpy as np
 import sys
-sys.path.append("D:\Code\stock_compute\config")
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
 
 #显示所有列
@@ -178,5 +179,5 @@ def history(start_date,end_date):
     print('All subprocesses done.')
 if __name__ == '__main__':
     date ='2021-04-24'#None#'2021-02-01' #'2021-01-20'
-    # main(date)
-    history('2021-01-01','2021-04-23')
+    main(date)
+    # history('2021-01-01','2021-04-23')
