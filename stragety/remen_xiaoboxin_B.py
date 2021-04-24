@@ -22,7 +22,6 @@ import json
 import copy
 import numpy as np
 import sys
-print(sys.path)
 sys.path.append("D:\Code\stock_compute\config")
 from readconfig import read_config
 
@@ -157,16 +156,27 @@ def main(date):
     print('time_delta:',time_end - time_start )
     df = core(df, date)
     save(db, df)
-def run(date):
+#计算历史日期段结果
+def history(start_date,end_date):
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
+    cursor = db.cursor()
+    sql = "select date_format(trade_date,'%Y-%m-%d') as trade_date from stock_trade_data where trade_date >= '{0}' and trade_date <= '{1}' ".format(start_date,end_date)
+    cursor.execute(sql)  # 执行SQL语句
+    date_tuple = cursor.fetchall()
+    print('date_tuple:',date_tuple)
+    cursor.close()
     p = Pool(8)
-    for i in range(0, 10):
-        p.apply_async(main, args=(date,str(i),))
+    for i in range(0, len(date_tuple)):
+        date = date_tuple[i][0]
+        print('date:',date)
+        p.apply_async(main, args=(date,))
     #    p.apply_async(main, args=('1',date,))
-    #print('Waiting for all subprocesses done...')
+    print('Waiting for all subprocesses done...')
     p.close()
     p.join()
-    #print('All subprocesses done.')
+    print('All subprocesses done.')
 if __name__ == '__main__':
     date ='2021-04-24'#None#'2021-02-01' #'2021-01-20'
-    main(date)
-    # run(date)
+    # main(date)
+    history('2021-01-01','2021-04-23')
