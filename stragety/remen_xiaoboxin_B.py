@@ -21,7 +21,11 @@ from multiprocessing import Pool
 import json
 import copy
 import numpy as np
+import sys
+print(sys.path)
+sys.path.append("D:\Code\stock_compute\config")
 from readconfig import read_config
+
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
@@ -132,7 +136,7 @@ def main(date):
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     # day_delta = 40
     db_config = read_config('db_config')
-    print(db_config)
+    print('db_config:',db_config)
     db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
     # db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
