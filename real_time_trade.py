@@ -19,7 +19,7 @@ import redis
 # logging.basicConfig(level=logging.DEBUG,filename='stock_day_trade1.log',filemode='w',
 #                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
-db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb" )
+db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb" )
 cursor = db.cursor()
 count=0
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)

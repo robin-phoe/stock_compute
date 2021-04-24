@@ -130,7 +130,7 @@ def main(date,h_tab):
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     # day_delta = 40
-    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+    db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
     #test 作为单个账号历史数据测试
     # sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_history_trade{0} " \
