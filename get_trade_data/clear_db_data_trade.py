@@ -4,8 +4,16 @@ from multiprocessing import Pool
 import pandas as pd
 import numpy as np
 import logging
-
-logging.basicConfig(level=logging.DEBUG, filename='../clear_db_data.log', filemode='w',
+import datetime
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
+#显示所有列
+pd.set_option('display.max_columns', None)
+#显示所有行
+pd.set_option('display.max_rows', None)
+logging.basicConfig(level=logging.DEBUG, filename='../log/clear_db_data.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 def get_df_from_db(sql, db):
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
@@ -20,57 +28,76 @@ def get_df_from_db(sql, db):
     df.reset_index(inplace=True)
     df = df.dropna(axis=0, how='any')
     df.reset_index(inplace=True)
-    # df['trade_date2'] = df['trade_date'].copy()
-    # print('trade_date2:',type(df['trade_date2'][0]))
-    # df['trade_date2'] = pd.to_datetime(df['trade_date2']).map(date2num)
-    # df['dates'] = np.arange(0, len(df))
-    # df['avg_10'] = df['close_price'].rolling(10).mean()
-    # df['avg_5'] = df['close_price'].rolling(5).mean()
+    # print('get df:',df.columns)
+    del df['level_0']
     cursor.close()
-    # # print(df)
-    # # df['trade_date'] = date2num(df['trade_date'])
-    # print('df:', df[['avg_10', 'close_price']])
     return df
-def make_data(df,db,h_table):
+def core(df,stock_id):
+    # print('df column:',df.columns)
+    df_single = df.drop(df[df.stock_id != stock_id].index)
+    # print('df_single column:', df_single.columns)
+    # print('df_single:',df_single)
+    df_single.reset_index(inplace=True)
+    df_single['yesterday'] = df_single['close_price'].shift(1)
+    df_single['increase'] = (df_single['close_price']/df_single['yesterday'] - 1) * 100
+    df_single.fillna(0,inplace=True)
+    df_single = df_single[['increase','trade_code']]
+    # print('df_single:',df_single)
+    return df_single
+def make_data(df,db,id_list):
     cursor = db.cursor()
-    for i in range(1,len(df)):
-        increase = (df.loc[i,'close_price'] - df.loc[i-1,'close_price'])/df.loc[i-1,'close_price']
-        print('increase:',increase,'trade_code:',df.loc[i,'trade_code'])
+    for id in id_list:
+        time4 = datetime.datetime.now()
+        df_single = core(df,id[0])
+        print('deal single df:',datetime.datetime.now() - time4)
+        increase_list = df_single.apply(lambda row: tuple(row), axis=1).values.tolist()
+        print('increase_list:',increase_list)
         try:
-            sql = "update stock_trade_data set increase = '{0}' where trade_code = '{1}'".format(increase,df.loc[i,'trade_code'])
-            print('sql:',sql)
-            cursor.execute(sql)  # 执行SQL语句
+            sql = "update stock_trade_data SET increase=(%s) where trade_code=(%s)"
+            cursor.executemany(sql, increase_list)  # commit_id_list上面已经说明
             db.commit()
             print('存储成功。')
-        except Exception as err:
+        except exception as err:
+            logging.exception('id:',id,err)
             db.rollback()
-            print('存储失败:', err)
+            print('存储失败:',id,err)
+
     cursor.close()
-def main(h_table):
-    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+def clear_main(h_table,start_date,end_date):
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
     cursor = db.cursor()
-    sql = "select distinct stock_id from stock_informations where h_table = '{}'".format(h_table)
+    sql = "select distinct stock_id from stock_trade_data where stock_id like '%{}'".format(h_table)
+    time1 = datetime.datetime.now()
     cursor.execute(sql)  # 执行SQL语句
     id_list = cursor.fetchall()
+    print('id select time:',datetime.datetime.now() - time1)
     cursor.close()
-    for id in id_list:
-        id = id[0]
-        sql = 'select trade_code,close_price,trade_date from stock_trade_data where stock_id = {0}'.format(id)
-        df = get_df_from_db(sql,db)
-        print(df)
-        make_data(df, db, h_table)
+    sql = "select stock_id,trade_code,close_price,trade_date " \
+          "from stock_trade_data " \
+          "where  stock_id not like '688%' and trade_date >= '{0}' and trade_date <= '{1}'".format(start_date,end_date)
+    time2 = datetime.datetime.now()
+    df = get_df_from_db(sql,db)
+    print('df select time:', datetime.datetime.now() - time2)
+    # print(df)
+    time3 = datetime.datetime.now()
+    make_data(df, db, id_list)
+    print('deal df select time:', datetime.datetime.now() - time3)
 
-def run():
+def run(start_date,end_date):
     p = Pool(8)
     for i in range(0, 10):
-        p.apply_async(main, args=(str(i),))
-    #    p.apply_async(main, args=('1',date,))
+        p.apply_async(clear_main, args=(str(i),start_date,end_date,))
+    #    p.apply_async(clear_main, args=('1',date,))
     print('Waiting for all subprocesses done...')
     p.close()
     p.join()
     print('All subprocesses done.')
 if __name__ == '__main__':
-    h_table = '0'
-    main(h_table)
+    start_date = '2018-10-01'
+    end_date = '2021-04-20'
+    # h_table = '0'
+    # clear_main(h_table,start_date,end_date)
     #
-    # run()
+    run(start_date,end_date)
