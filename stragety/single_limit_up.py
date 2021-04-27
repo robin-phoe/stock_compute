@@ -154,4 +154,6 @@ def main(date):
     core(db, start_t, date)
 if __name__ == '__main__':
     date = '2020-12-31'
+    time1 = datetime.datetime.now()
     main(date)
+    print('time_delta:',datetime.datetime.now() - time1)
