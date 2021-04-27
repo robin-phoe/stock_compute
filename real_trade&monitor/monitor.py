@@ -95,9 +95,8 @@ def draw_k_line(id,inform_type):
     zhuang_section =  zhuang_res[0][0]
     zhuang_grade = zhuang_res[0][1]
     chart_title = '{0} {1} {2} {3}'.format(id, stock_name, bk_name,zhuang_grade)
-    sql = "SELECT trade_date,open_price,close_price,high_price,low_price  FROM stockdb.stock_history_trade{0} \
-            where trade_date >= '{1}' and trade_date <= '{2}' and  stock_id = '{3}'".format(h_tab, '2020-01-01', end_date,
-                                                                                            id)
+    sql = "SELECT trade_date,open_price,close_price,high_price,low_price  FROM stock_trade_data \
+            where trade_date >= '{0}' and  stock_id = '{1}' and trade_date <= '{2}' ".format('2020-01-01',id, end_date)
     df = get_df_from_db(sql)
     cursor.close()
     df['5'] = df['close_price'].rolling(5).mean()
@@ -131,7 +130,7 @@ def draw_k_line(id,inform_type):
         print('indexs:',sta,end )
         plt.plot(df['dates'][sta:end], df['5'][sta:end] ,color='green')
     plt.legend();
-    image_path ='./pic/{0}{1}{2}{3}.jpg'.format(id,stock_name,end_date,inform_type)
+    image_path ='../pic/{0}{1}{2}{3}.jpg'.format(id,stock_name,end_date,inform_type)
     plt.savefig(image_path)
     message = '{0} {1} {2} ! zhuang_grade:{3}。涨幅：'.format(id,stock_name,inform_type,zhuang_grade)
     return message, image_path
