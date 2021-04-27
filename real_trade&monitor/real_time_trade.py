@@ -113,25 +113,25 @@ def run():
     market_tranfer()
     # print('All subprocesses done.')
 if __name__ == '__main__':
-    run()
+    # run()
     # main()
-    # i=0
-    # flush_flag = 1
-    # while True:
-    #     time_now = datetime.datetime.now().strftime("%H:%M:%S")
-    #     if flush_flag ==1:
-    #         r.flushdb()
-    #         print('已清空redis')
-    #         flush_flag = 0
-    #     elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
-    #         time1 = datetime.datetime.now()
-    #         # main()
-    #         run()
-    #         time2 = datetime.datetime.now()
-    #         time_delta = time2 - time1
-    #         print('时间:',i,  time2.strftime('%H:%M:%S,%f'))
-    #         print('时间差:',time_delta)
-    #         i+=1
-    #         time.sleep(50)
-    #     time.sleep(1)
+    i=0
+    flush_flag = 1
+    while True:
+        time_now = datetime.datetime.now().strftime("%H:%M:%S")
+        if flush_flag ==1:
+            r.flushdb()
+            print('已清空redis')
+            flush_flag = 0
+        elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
+            time1 = datetime.datetime.now()
+            # main()
+            run()
+            time2 = datetime.datetime.now()
+            time_delta = time2 - time1
+            print('时间:',i,  time2.strftime('%H:%M:%S,%f'))
+            print('时间差:',time_delta)
+            i+=1
+            time.sleep(50)
+        time.sleep(1)
 
