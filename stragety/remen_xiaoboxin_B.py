@@ -167,7 +167,7 @@ def history(start_date,end_date):
     date_tuple = cursor.fetchall()
     print('date_tuple:',date_tuple)
     cursor.close()
-    p = Pool(8)
+    p = Pool(4)
     for i in range(0, len(date_tuple)):
         date = date_tuple[i][0]
         print('date:',date)
@@ -178,6 +178,6 @@ def history(start_date,end_date):
     p.join()
     print('All subprocesses done.')
 if __name__ == '__main__':
-    date ='2021-04-24'#None#'2021-02-01' #'2021-01-20'
+    date =None#'2021-02-01' #'2021-01-20'
     main(date)
-    # history('2021-01-01','2021-04-23')
+    # history('2020-01-01','2021-04-23')

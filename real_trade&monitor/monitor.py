@@ -131,7 +131,7 @@ def draw_k_line(id,inform_type):
         print('indexs:',sta,end )
         plt.plot(df['dates'][sta:end], df['5'][sta:end] ,color='green')
     plt.legend();
-    image_path ='./pic/{0}{1}{2}{3}.jpg'.format(id,stock_name,end_date,inform_type)
+    image_path ='../pic/{0}{1}{2}{3}.jpg'.format(id,stock_name,end_date,inform_type)
     plt.savefig(image_path)
     message = '{0} {1} {2} ! zhuang_grade:{3}。涨幅：'.format(id,stock_name,inform_type,zhuang_grade)
     return message, image_path

@@ -24,7 +24,7 @@ def creat_sql(trade_date):
                                    'WHERE trade_date = "{0}" AND grade >= 0 AND monitor = 1 '.format(trade_date)
 def sel_lastest_day():
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    sql  = "select max(trade_date) from stock_history_trade1"
+    sql  = "select max(trade_date) from remen_xiaoboxin"
     print('sql:',sql)
     cursor.execute(sql)  # 执行SQL语句
     lastest_day = cursor.fetchall()[0][0].strftime("%Y-%m-%d")
