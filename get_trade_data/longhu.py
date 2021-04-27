@@ -10,7 +10,7 @@ import pymysql
 import logging
 import json
 import datetime
-logging.basicConfig(level=logging.DEBUG, filename='../longhu_trade.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/longhu_trade.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
