@@ -5,27 +5,34 @@ http://quote.eastmoney.com/center
 #coding=utf-8
 import requests
 import re
-#import pandas as pd
-#import threading
-from get_trade_data.clear_db_data import *
+import logging
+import pymysql
+from multiprocessing import Pool
+from clear_db_data_trade import clear_main
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 
-logging.basicConfig(level=logging.DEBUG, filename='../get_history_trade.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/get_history_trade.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 
 
-def select_info(table,cursor,db):
+def select_info(table,db):
+    cursor = db.cursor()
     sql="select stock_id from stock_informations where h_table={}".format(table)
     cursor.execute(sql)
     stock_id_list = cursor.fetchall()
+    cursor.close()
     #print(stock_id_list)
     return stock_id_list
-def get_data(table,stock_id,cursor,db):
+def get_data(table,stock_id,cursor,db,start_date,end_date):
     if stock_id[0]=='6':
-        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.{}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=20181001&end=20220101&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id)
+        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.{0}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg={1}&end={2}&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id,start_date,end_date)
         url2="http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&fltt=2&invt=2&volt=2&fields=f58,f84,f85&secid=1.{}".format(stock_id)
-    elif stock_id[0]=='0':
-        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.{}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=20181001&end=20220101&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id)
+    elif stock_id[0]=='0' or stock_id[0]=='3':
+        url="http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.{0}&fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg={1}&end={2}&ut=fa5fd1943c7b386f172d6893dbfba10b".format(stock_id,start_date,end_date)
         url2="http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&fltt=2&invt=2&volt=2&fields=f58,f84,f85&secid=0.{}".format(stock_id)
     else:
         return 0
@@ -84,11 +91,10 @@ def get_data(table,stock_id,cursor,db):
         # print('val_insert:',val_insert)
         # print('val_update:', val_update)
     try:
-    #if 1:
         #取新值
-        sql="insert into stock_history_trade{}(trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price," \
+        sql="insert into stock_trade_data(trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price," \
             "low_price,trade_amount,trade_money,circulation,capital_stock,turnover_rate) \
-            values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)".format(table)
+            values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
         cursor.executemany(sql, val_insert)
         #更新
         # sql = "update stock_history_trade{} set trade_code=%s,stock_id=%s,stock_name=%s,trade_date=%s,open_price=%s,close_price=%s," \
@@ -104,8 +110,10 @@ def get_data(table,stock_id,cursor,db):
         print('存储失败:',err)
         logging.error('存储失败:id:{},name:{}\n{}\n{}'.format(datas[0][0],datas[0][1],data_list,err))
 
-def make_one_table(table):
-    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+def make_one_table(table,start_date,end_date):
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"],
+                         database=db_config["database"])
     cursor = db.cursor()
     #清除原数据
     # h_table = "stock_history_trade{}".format(table)
@@ -115,52 +123,30 @@ def make_one_table(table):
 
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
-    stock_id_list=select_info(table,cursor,db)
+    stock_id_list=select_info(table,db)
     #stock_id_list = [('603931',)]
-    #stock_id_list = [('000790',)]
+    # stock_id_list = [('002831',)]
+
+    start_date_str = re.sub('-','',start_date) #YYYYmmdd
+    end_date_str = re.sub('-','',end_date) #YYYYmmdd
     for stock in stock_id_list:
         print('stock[0]:',stock[0])
-        get_data(table,stock[0],cursor,db)
+        get_data(table,stock[0],cursor,db,start_date_str,end_date_str)
     print('表：',table)
-    main(table)
+    clear_main(table,start_date,end_date)
 
-def run():
+def run(start_date,end_date):
     p = Pool(8)
     for i in range(0,10):
-        p.apply_async(make_one_table, args=(i,))
+        p.apply_async(make_one_table, args=(i,start_date,end_date,))
     print('Waiting for all subprocesses done...')
     p.close()
     p.join()
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    run()
-    # make_one_table(1)
-    # p = Pool(8)
-    # for i in range(1,11):
-    #     p.apply_async(make_one_table, args=(i,))
-    # print('Waiting for all subprocesses done...')
-    # p.close()
-    # p.join()
-    # print('All subprocesses done.')
-    #.start()
-##    for i in range(1,11):
-##        t_name='thread'+str(i)
-##        myThread(i, t_name, i).start()
-##    print ("退出主线程")
-##    t1=myThread(1, 't1', 1)
-##    t2=myThread(2, 't2', 2)
-##    t3=myThread(3, 't3', 3)
-##    t4=myThread(4, 't1', 4)
-##    t5=myThread(5, 't1', 5)
-##    t6=myThread(6, 't1', 6)
-##    t7=myThread(7, 't1', 7)
-##    t8=myThread(8, 't1', 8)
-##    t9=myThread(9, 't1', 9)
-##    t10=myThread(10, 't1', 10)
-##    t1.start()
-##    t2.start()
-##    t1.join()
-##    t2.join()
-##    print ("退出主线程")
+    start_date = '2021-04-23'
+    end_date = '2021-04-23'
+    run(start_date,end_date)
+    # make_one_table(0,start_date,end_date)
 
