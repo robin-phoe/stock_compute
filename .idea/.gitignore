@@ -1,5 +1,5 @@
 # Default ignored files
 /shelf/
 /workspace.xml
-*.json
+db_config.json
 config/
