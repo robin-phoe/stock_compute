@@ -56,7 +56,11 @@ def save(db,df,date):
         print('存储失败:', err)
         logging.error('存储失败:{}'.format(err))
     cursor.close()
-def core(db,start_t,date):
+def core(db,date):
+    if date == None:
+        date = datetime.datetime.now().strftime('%Y-%m-%d')
+    date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
+    start_t = (date_time - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
     time_start = datetime.datetime.now()
     sql = "select trade_code,stock_id,stock_name,trade_date,close_price,increase,turnover_rate " \
           "from stock_trade_data " \
@@ -147,13 +151,41 @@ def main(date):
     db_config = read_config('db_config')
     db = pymysql.connect(host=db_config["host"], user=db_config["user"],
                          password=db_config["password"], database=db_config["database"])
-    if date == None:
-        date = datetime.datetime.now().strftime('%Y-%m-%d')
-    date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
-    start_t = (date_time - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
-    core(db, start_t, date)
+
+    core(db, date)
+def history(start_date = None,end_date = None):
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
+    #清理时间区间内数据
+    cursor = db.cursor()
+    sql = 'delete from limit_up_single'
+    cursor.execute(sql)
+    db.commit()
+
+    #查询时间列表
+    sql = "select trade_date from stock_trade_data"
+    cursor.execute(sql)  # 执行SQL语句
+    date_tuple = cursor.fetchall()
+    cursor.close()
+    p = Pool(4)
+    for i in range(0, len(date_tuple)):
+        date = date_tuple[i][0]
+        print('date:',date)
+        p.apply_async(core, args=(db,date,))
+    #    p.apply_async(main, args=('1',date,))
+    print('Waiting for all subprocesses done...')
+    p.close()
+    p.join()
+    print('All subprocesses done.')
+
 if __name__ == '__main__':
     date = '2020-12-31'
     time1 = datetime.datetime.now()
+<<<<<<< HEAD
     main(date)
+=======
+    # main(date)
+    history()
+>>>>>>> 38b03d572a45a3a5aee86c18e7a9552b0a55946d
     print('time_delta:',datetime.datetime.now() - time1)
