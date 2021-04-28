@@ -182,10 +182,6 @@ def history(start_date = None,end_date = None):
 if __name__ == '__main__':
     date = '2020-12-31'
     time1 = datetime.datetime.now()
-<<<<<<< HEAD
-    main(date)
-=======
     # main(date)
     history()
->>>>>>> 38b03d572a45a3a5aee86c18e7a9552b0a55946d
     print('time_delta:',datetime.datetime.now() - time1)
