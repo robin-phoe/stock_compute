@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import re
 
-logging.basicConfig(level=logging.DEBUG, filename='../creat_monitor_table.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/creat_monitor_table.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 #记录需要查询的类型表及SQL
@@ -16,7 +16,7 @@ table_dict = {}
 table_code = {'zhuang':'1','remen_xiaoboxin':'2'}
 def creat_sql(trade_date):
     table_dict['zhuang'] = 'SELECT stock_id,stock_name,zhuang_grade,"zhuang" as grade ' \
-                           'FROM com_zhuang ' \
+                           'FROM com_zhuang0427 ' \
                            'WHERE zhuang_grade >= 1000 AND zhuang_grade <10000  AND lasheng_flag = 0 ' \
                            ' AND monitor = 1'
     table_dict['remen_xiaoboxin'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin" ' \
