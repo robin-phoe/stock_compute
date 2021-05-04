@@ -17,7 +17,7 @@ pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
 
-logging.basicConfig(level=logging.DEBUG, filename='../log/single_limit_up.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/single_limit_up.log', filemode='a',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 def get_df_from_db(sql, db):
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
@@ -56,7 +56,11 @@ def save(db,df,date):
         print('存储失败:', err)
         logging.error('存储失败:{}'.format(err))
     cursor.close()
-def core(db,date):
+def core(date,db=None):
+    if db == None:
+        db_config = read_config('db_config')
+        db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
     if date == None:
         date = datetime.datetime.now().strftime('%Y-%m-%d')
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
@@ -152,7 +156,7 @@ def main(date):
     db = pymysql.connect(host=db_config["host"], user=db_config["user"],
                          password=db_config["password"], database=db_config["database"])
 
-    core(db, date)
+    core(date,db)
 def history(start_date = None,end_date = None):
     db_config = read_config('db_config')
     db = pymysql.connect(host=db_config["host"], user=db_config["user"],
@@ -168,16 +172,22 @@ def history(start_date = None,end_date = None):
     cursor.execute(sql)  # 执行SQL语句
     date_tuple = cursor.fetchall()
     cursor.close()
-    p = Pool(4)
+    #case 1 multi process
+    # p = Pool(4)
+    # for i in range(0, len(date_tuple)):
+    #     date = date_tuple[i][0]
+    #     print('date:',date)
+    #     p.apply_async(core, args=(date,None,))
+    # #    p.apply_async(main, args=('1',date,))
+    # print('Waiting for all subprocesses done...')
+    # p.close()
+    # p.join()
+    # print('All subprocesses done.')
+
+    #case2 single process
     for i in range(0, len(date_tuple)):
-        date = date_tuple[i][0]
-        print('date:',date)
-        p.apply_async(core, args=(db,date,))
-    #    p.apply_async(main, args=('1',date,))
-    print('Waiting for all subprocesses done...')
-    p.close()
-    p.join()
-    print('All subprocesses done.')
+        date = (date_tuple[i][0]).strftime('%Y-%m-%d')
+        core(date, db)
 
 if __name__ == '__main__':
     date = '2020-12-31'
