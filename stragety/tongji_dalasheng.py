@@ -7,9 +7,13 @@ import datetime
 import logging
 import re
 from multiprocessing import Pool
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 
 
-logging.basicConfig(level=logging.DEBUG, filename='tongji_lasheng.py.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/tongji_lasheng.py.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 def save(db,trade_code,stock_id,stock_name,trade_date,count):
     cursor = db.cursor()
@@ -31,9 +35,11 @@ def save(db,trade_code,stock_id,stock_name,trade_date,count):
 def main(h_tab,start_t,end_t):
     # if date == None:
     #     date = datetime.datetime.now().strftime('%Y-%m-%d')
-    db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    sql = "select distinct  stock_id,stock_name from stock_history_trade{0}".format(h_tab)
+    sql = "select distinct  stock_id,stock_name from stock_trade_data where stock_id like '%{}'".format(h_tab)
     cursor.execute(sql)
     stock_id_list = cursor.fetchall()
     # date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
@@ -45,9 +51,9 @@ def main(h_tab,start_t,end_t):
             continue
         stock_name = ids_tuple[1]
         # trade_code = re.sub('-', '', date[0:10]) + id
-        sql = "SELECT trade_date  FROM stock_history_trade{0} \
-                where trade_date >= '{1}' and trade_date <= '{2}' and  stock_id  = '{3}' " \
-              "and increase >= 9.75 ".format(h_tab, start_t, end_t,ids)
+        sql = "SELECT trade_date  FROM stock_trade_data \
+                where trade_date >= '{0}' and trade_date <= '{1}' and  stock_id  = '{2}' " \
+              "and increase >= 9.75 ".format( start_t, end_t,ids)
         cursor.execute(sql)
         date_res = cursor.fetchall()
         print('date_res:',date_res)
@@ -86,7 +92,7 @@ def main(h_tab,start_t,end_t):
 
 def run(start_t,end_t):
     p = Pool(8)
-    for i in range(1, 11):
+    for i in range(0, 10):
         p.apply_async(main, args=(str(i),start_t,end_t,))
     #    p.apply_async(main, args=('1',date,))
     print('Waiting for all subprocesses done...')
@@ -95,10 +101,11 @@ def run(start_t,end_t):
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    end_t ='2021-02-23'#None#'2021-02-01' #'2021-01-20'
+    end_t ='2021-05-01'#None#'2021-02-01' #'2021-01-20'
     start_t= '2018-01-01'
 
-    # h_tab = '3'
-    # main(h_tab,start_t,end_t)
-
-    run(start_t,end_t)
+    time1 = datetime.datetime.now()
+    h_tab = '3'
+    main(h_tab,start_t,end_t)
+    # run(start_t,end_t)
+    print('time_delta:', datetime.datetime.now() - time1)
