@@ -18,7 +18,7 @@ from multiprocessing import Pool
 import json
 import openpyxl
 
-logging.basicConfig(level=logging.DEBUG, filename='comp_redu_210120.py.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='comp_redu_210120.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 def get_df_from_db(sql, db):
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标

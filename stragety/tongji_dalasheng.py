@@ -47,6 +47,7 @@ def main(h_tab,start_t,end_t):
     # stock_id_list = (('600121','郑州煤电'),)
     for ids_tuple in stock_id_list:
         ids = ids_tuple[0]
+        print('ids:',ids)
         if ids[0:3] =='300' or ids[0:3] =='688':
             continue
         stock_name = ids_tuple[1]
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     start_t= '2018-01-01'
 
     time1 = datetime.datetime.now()
-    h_tab = '3'
+    h_tab = '1'
     main(h_tab,start_t,end_t)
     # run(start_t,end_t)
     print('time_delta:', datetime.datetime.now() - time1)
