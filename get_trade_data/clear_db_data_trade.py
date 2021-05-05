@@ -57,7 +57,7 @@ def make_data(df,db,id_list):
             cursor.executemany(sql, increase_list)  # commit_id_list上面已经说明
             db.commit()
             print('存储成功。')
-        except exception as err:
+        except Exception as err:
             logging.exception('id:',id,err)
             db.rollback()
             print('存储失败:',id,err)
@@ -96,7 +96,7 @@ def run(start_date,end_date):
     print('All subprocesses done.')
 if __name__ == '__main__':
     start_date = '2018-10-01'
-    end_date = '2021-04-20'
+    end_date = '2021-04-30'
     # h_table = '0'
     # clear_main(h_table,start_date,end_date)
     #
