@@ -1,25 +1,19 @@
-#通过热门回头捕捉反弹
-#短点：单涨停后小回头，前几日有单涨停加分，10日均线低于30日均线加分。【单涨停】：收盘是10日内最大值，10日increase<= 20%。
-#大热门：30日内大热门，大回头
-
-import mpl_finance
-# import tushare as ts
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pymysql
-from matplotlib import ticker
-from matplotlib.pylab import date2num
-import numpy as np
-import datetime
 import logging
+import pymysql
+import pandas as pd
+import datetime
 import re
-from multiprocessing import Pool
-import json
-import openpyxl
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 
-logging.basicConfig(level=logging.DEBUG, filename='comp_redu_210120.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/validate_redu_5.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
+
+db_config = read_config('db_config')
+db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                     password=db_config["password"], database=db_config["database"])
 def get_df_from_db(sql, db):
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
     cursor.execute(sql)  # 执行SQL语句
@@ -31,109 +25,79 @@ def get_df_from_db(sql, db):
     # df = df.set_index(keys=['trade_date'])
     df = df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last')
     df.reset_index(inplace=True)
-    # df = df.dropna(axis=0, how='any')
-    # df.reset_index(inplace=True)
-    # df['trade_date2'] = df['trade_date'].copy()
-    # print('trade_date2:',type(df['trade_date2'][0]))
-    # df['trade_date2'] = pd.to_datetime(df['trade_date2']).map(date2num)
-    # df['dates'] = np.arange(0, len(df))
-    # df['avg_10'] = df['close_price'].rolling(10).mean()
-    df['avg_5'] = df['close_price'].rolling(5).mean()
+    # df['avg_5'] = df['close_price'].rolling(5).mean()
     cursor.close()
-    # print(df)
-    # df['trade_date'] = date2num(df['trade_date'])
-    # print('df:', df[['avg_10', 'close_price']])
     return df
-def save(db,trade_code, id, trade_date, cou, increase, increase_sum, redu_5,stock_name):
-    cursor = db.cursor()
-    try:
-        sql = "insert into verify_redu_5(trade_code, stock_id, trade_date, days, increase, increase_sum, redu_5,stock_name) \
-            values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}') " \
-              "ON DUPLICATE KEY UPDATE trade_code ='{0}', stock_id='{1}', trade_date='{2}', days='{3}', increase='{4}', " \
-              "increase_sum='{5}', redu_5='{6}',stock_name='{7}' "\
-            .format(trade_code, id, trade_date, cou, increase, increase_sum, redu_5,stock_name)
-        print('sql:', sql)
-        cursor.execute(sql)
-        db.commit()
-        print('存储完成')
-        logging.info('存储完成:id:{},name:{},date:{}'.format(id, stock_name,trade_date))
-    except Exception as err:
-        db.rollback()
-        print('存储失败:', err)
-        logging.error('存储失败:id:{},name:{},date:{}\n{}'.format(id, stock_name,trade_date, err))
-    cursor.close()
-#单涨停回头验证
-def make_data(df,db,redu_5):
-    pass
-    # for i in range(11,len(df)-5):
-    #     if df.loc[i,'increase'] >= 9.75 / 100 and df['increase'][i-10:i].sum() <= 17 / 100:
-    #         avg_5_flag = 0
-    #         increase_list = []
-    #         for j in range(i+1,i+4):
-    #             if df.loc[j,'increase'] >= 9.75 / 100:
-    #                 if j ==i+1:
-    #                     save(db, df.loc[i, 'trade_code'], df.loc[i, 'trade_date'], df.loc[i, 'stock_id'],
-    #                          df.loc[i, 'stock_name'], 0, avg_5_flag, df.loc[j,'increase'],second_zhangting= 1)
-    #                     break
-    #                 else:
-    #                     save(db,df.loc[i,'trade_code'],df.loc[i,'trade_date'],df.loc[i,'stock_id'],df.loc[i,'stock_name'],
-    #                                                     1,avg_5_flag,df.loc[j,'increase'],second_zhangting=(j-i))
-    #                     break
-    #             elif min(df.loc[j,'high_price'],df.loc[j,'low_price']) <= df.loc[j,'avg_5']:
-    #                 avg_5_flag = 1
-    #                 increase_list.append(df.loc[j, 'increase'])
-    #             else:
-    #                 increase_list.append(df.loc[j,'increase'])
-    #         else:
-    #             save(db, df.loc[i, 'trade_code'], df.loc[i, 'trade_date'], df.loc[i, 'stock_id'],
-    #                  df.loc[i, 'stock_name'], 0,avg_5_flag,increase=max(increase_list))
-    #     else:
-    #         continue
-
-
-def main(start_date):
-    db = pymysql.connect("localhost", "root", "Zzl08382020", "stockdb")
-    cursor = db.cursor()
-    sql = "select C.trade_code,C.stock_id,C.trade_date,I.h_table,C.redu_5,C.stock_name from com_redu C " \
-          "left join stock_informations I on I.stock_id = C.stock_id where redu_5 > 0 and trade_date >= '{}'".format(start_date)
+def sel_remen_5(date):
+    sql = "select trade_code,trade_date,stock_id,stock_name from com_redu_test where trade_date = '{}' and redu_5 >= 10000".format(date)
+    redu_df = get_df_from_db(sql, db)
+    id_list = redu_df['stock_id'].tolist()
+    id_tuple = tuple(id_list)
+    return redu_df,id_tuple
+def sel_trade_data(date,id_tuple):
+    end_date = (datetime.datetime.strptime(date,'%Y-%m-%d')+datetime.timedelta(days=20)).strftime('%Y-%m-%d')
+    if len(id_tuple) == 1:
+        sql = "select stock_id,stock_name,close_price,high_price,trade_date " \
+              "from stock_trade_data where stock_id = '{0}' and trade_date>='{1}' and trade_date<='{2}'".format(
+            id_tuple[0], date, end_date)
+    else:
+        sql = "select stock_id,stock_name,close_price,high_price,trade_date " \
+              "from stock_trade_data where stock_id in {0} and trade_date>='{1}' and trade_date<='{2}'".format(
+            id_tuple,date,end_date)
+    print('sql:',sql)
+    trade_df = get_df_from_db(sql,db)
+    trade_df['high'] = trade_df.groupby(['stock_id'])['high_price'].shift(-1)
+    print('trade_df:', trade_df)
+    trade_df.drop(trade_df[trade_df.trade_date != date].index, inplace=True)
+    # print('trade_df:',trade_df)
+    trade_df.reset_index(inplace=True)
+    trade_df['increase_max'] = trade_df['high']/trade_df['close_price'] - 1
+    print('trade_df:',trade_df)
+    trade_df['increase_flag'] = trade_df['increase_max'].apply(lambda x: '1' if 0.03<x<0.05 else ('2' if x>=0.05 else '0'))
+    count_layer_1 = trade_df['increase_flag'].tolist().count('1')
+    count_layer_2 = trade_df['increase_flag'].tolist().count('2')
+    print(count_layer_1,count_layer_2)
+    len_trade_df = len(trade_df)
+    count_layer_1_rate = count_layer_1 / len_trade_df
+    count_layer_2_rate = count_layer_2 / len_trade_df
+    logging.info('date:{0},count_layer_1_rate:{1},count_layer_2_rate:{2}'.format(date,count_layer_1_rate,count_layer_2_rate))
+    print('date:{0},count_layer_1_rate:{1},count_layer_2_rate:{2}'.format(date,count_layer_1_rate,count_layer_2_rate))
+    return [date,len_trade_df,count_layer_1,count_layer_1_rate,count_layer_2,count_layer_2_rate]
+def main(date):
+    if date == None:
+        date = datetime.datetime.now().strftime('%Y-%m-%d')
+    redu_df,id_tuple = sel_remen_5(date)
+    res_list = sel_trade_data(date, id_tuple)
+    return res_list
+def history(start_date,end_date):
+    data = {'date': [],
+            'amount': [],
+            'layer_1_count': [],
+            'layer_1_rate': [],
+            'layer_2_count': [],
+            'layer_2_rate': []
+            }
+    res_df = pd.DataFrame(data)
+    sql = "select distinct(trade_date) from com_redu_test where trade_date >= '{}' and trade_date <= '{}'".format(start_date,end_date)
+    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
     cursor.execute(sql)  # 执行SQL语句
-    id_list = cursor.fetchall()
-    count = len(id_list)
-    print('count:',count)
-
-    # id_list = [(600126,),] #杭钢股份
-    for stock in id_list:
-        # stock = ('20200429600677', '600677', datetime.datetime(2020, 4, 29, 0, 0), '4', 1.00073, '*ST航通')
-        print('stock:',stock)
-        id = stock[1]
-        h_table = stock[3]
-        trade_date = stock[2]
-        redu_5 = stock[4]
-        trade_code = stock[0]
-        stock_name = stock[5]
-        sql = "select  increase " \
-              "from stock_history_trade{0} where stock_id = '{1}' and trade_date > '{2}' limit 3 ".format(h_table,id,trade_date)
-        # df = get_df_from_db(sql, db)
-        cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-        cursor.execute(sql)  # 执行SQL语句
-        res_list = cursor.fetchall()
-        print('res_list:',res_list)
-        cou =1
-        increase_sum = 0
-        increase_list = [0]
-        for inc in res_list:
-            increase = inc[0]
-            if increase >= 0.07:
-                save(db,trade_code,id,trade_date,cou,increase,increase_sum,redu_5,stock_name)
-                break
-            else:
-                increase_sum += increase
-                cou +=1
-                increase_list.append(increase)
-        else:
-            increase = max(increase_list)
-            save(db,trade_code, id, trade_date, cou, increase, increase_sum, redu_5,stock_name)
-        # make_data(df, db,redu_5)
+    date_tuple = cursor.fetchall()
+    print('date_tuple:',date_tuple)
     cursor.close()
+    for date in date_tuple:
+        date_str = date[0].strftime("%Y-%m-%d")
+        res_list = main(date_str)
+        res_df.loc[len(res_df)] = res_list
+    res_df['reach_rate'] = res_df['layer_1_rate'] + res_df['layer_2_rate']
+    row = len(res_df)
+    res_df.loc[row, 'layer_1_count'] = res_df['layer_1_count'].mean()
+    res_df.loc[row,'layer_1_rate'] = res_df['layer_1_rate'].mean()
+    res_df.loc[row, 'layer_1_rate'] = res_df['layer_1_rate'].mean()
+    res_df.loc[row, 'layer_2_count'] = res_df['layer_2_count'].mean()
+    res_df.loc[row, 'reach_rate'] = res_df['reach_rate'].mean()
+    file_name = "./validate_report/validate_remen_5.csv"
+    res_df.to_csv(file_name,encoding='utf-8')
 if __name__ == '__main__':
-    main(start_date = '2020-07-01')
+    date = '2021-04-22'
+    # main(date)
+    history('2021-04-01','2021-04-22')
