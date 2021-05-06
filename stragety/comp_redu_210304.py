@@ -8,11 +8,15 @@ import logging
 import re
 from multiprocessing import Pool
 import json
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
-logging.basicConfig(level=logging.DEBUG, filename='../comp_redu_210304.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/comp_redu_210304.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 def get_df_from_db(sql, db):
@@ -122,7 +126,9 @@ def main(date):
         date = datetime.datetime.now().strftime('%Y-%m-%d')
     date_time = datetime.datetime.strptime(date,'%Y-%m-%d')
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
-    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
     cursor = db.cursor()
     zhangting_df = com_redu2(db,date,delta = 30)
     #print('len4:', len(zhangting_df))
@@ -184,16 +190,21 @@ def run(date):
     p.join()
     #print('All subprocesses done.')
 def history_com(start_date,end_date):
-    db_h = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
-    cursor = db_h.cursor()
-    sql = "select distinct(trade_date) from stock_history_trade1 where trade_date >= '{0}' and trade_date <= '{1}'".format(start_date,end_date)
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
+    cursor = db.cursor()
+    sql = "select distinct(trade_date) from stock_trade_data where trade_date >= '{0}' and trade_date <= '{1}'".format(start_date,end_date)
     cursor.execute(sql)
     date_list = cursor.fetchall()
     #print('date_list:',date_list)
+    p = Pool(8)
     for date_t in date_list:
-            date = date_t[0].strftime('%Y-%m-%d')
-            #print(date)
-    main(date)
+        p = Pool(8)
+        date = date_t[0].strftime('%Y-%m-%d')
+        print('date:',date)
+        # main(date)
+        p.apply_async(main, args=(date,))
 def run_h(start_date,end_date):
     p = Pool(8)
     for i in range(1, 11):
@@ -229,10 +240,9 @@ if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
     # run(date)
 
-    # h_tab = '2'
-    main( date)
+    # main( date)
 
-    # history_com(start_date='2020-01-01', end_date='2021-01-19')
+    history_com(start_date='2020-01-01', end_date='2021-04-01')
     # run_h(start_date='2020-07-31', end_date='2021-02-22')
 
     # test_apply()
