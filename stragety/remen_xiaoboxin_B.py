@@ -8,7 +8,7 @@
 #三、左侧走势 60日均线 近20日差为正，且20均线20日差为正（固定分数10000），正：>=0.97
 #四、换手率
 #五、振荡波形--偏离度 当前价与20日均线偏差值（分数为二次拱形函数）
-#*
+#六、须是凹谷形，即当前显现凹谷左侧形态，捕捉右侧回升机会
 #目前不包含688
 
 # import tushare as ts
@@ -49,19 +49,46 @@ def get_df_from_db(sql, db):
     # df['trade_date'] = date2num(df['trade_date'])
     # print('df:', df[['avg_10', 'close_price']])
     return df
+#判断凹谷左侧
+#单日increase<3%
+#累计下跌幅度>-6%
+def estimate_modality(df):
+    def com_inc(row):
+        sum_depreciate = 0
+        day_count = 0
+        for i in range(0,16):
+            field_name = 'increase'+str(i)
+            # 当日increase
+            if i == 0:
+                field_name = 'increase'
+            value = row[field_name]
+            if value >= 3:
+                break
+            sum_depreciate += value
+            day_count = i
+        if day_count >= 3 and sum_depreciate < -6:
+            row['modality_grade'] = 1
+        else:
+            row['modality_grade'] = 0
+        return row
+    df = df.apply(com_inc,axis=1)
+    return df
+#shift近15日increase
+def deal_df_shift(df):
+    for i in range(1,16):
+        df['increase'+str(i)] = df.groupby(['stock_id'])['increase'].shift(i)
+        df['increase'+str(i)].fillna(100,inplace=True)
+    df['modality_grade'] = -1
+    return df
 def core(df,date):
+    df = deal_df_shift(df)
+    print('df col1:',df.columns)
     df = df.set_index(keys=['trade_date'])
-
-    # df.reset_index(inplace=True)
-    # print('df:',df.index)
     df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last', inplace=True)
-    # print('df:', df)
     #求5日数据
     df_avg_5 = df.groupby(['stock_id'])['close_price'].rolling(5).mean()
-    # print('df_avg_5:',df_avg_5)
     #求下底均线（20日）
     df_avg_low = df.groupby(['stock_id'])['close_price'].rolling(20).mean()
-    # print('df_avg_low',df_avg_low)
     #merge 下底均线 & 计算下底线最大偏离度
     df = pd.merge(df, df_avg_low, how='left', on=['stock_id','trade_date'])
     df.rename(columns={'close_price_x':'close_price','close_price_y': 'avg_low'}, inplace=True)
@@ -93,6 +120,12 @@ def core(df,date):
     print('df:',df.head(20))
     #删除日均换手小于3%
     df.drop(df[df.turnover_20 < 3].index, inplace=True)
+    #计算凹谷（左侧）特征
+    print('df col2:', df.columns)
+    df = estimate_modality(df)
+    #删除凹谷特征不符合的行（0）
+    # print('df_aogu:', df[['stock_id', 'stock_name', 'trade_date', 'modality_grade']])
+    df.drop(df[df.modality_grade == 0].index, inplace=True)
     #计算5日均线的参照分数
     df['avg_5_flag'] = (df['avg_5']/df['close_price'] - 0.75) * 10000
     # 计算偏离度分数
@@ -102,7 +135,7 @@ def core(df,date):
     df.drop(df[np.isnan(df['grade'])].index, inplace=True)
     df.sort_values(axis=0, ascending=False, by='grade', na_position='last', inplace=True)
     df.reset_index(inplace=True)
-    # print('df:', df[['stock_id','stock_name','trade_date','grade','avg_5_flag','avg_low_flag','bais']])
+    print('df result:', df[['stock_id','stock_name','trade_date','grade','avg_5_flag','avg_low_flag','bais']])
     return df
 def save(db,df):
     cursor = db.cursor()
@@ -149,7 +182,8 @@ def main(date):
     # sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_trade_data " \
     #       "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%' ".format(start_t,date)#and stock_id in ('002940','000812')
     sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_trade_data " \
-          "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%' ".format(start_t,date)#and stock_id in ('002940','000812')
+          "where stock_id not like '688%' and stock_id not like '300%' and trade_date >= '{0}' and trade_date <= '{1}' " \
+          "and stock_name not like 'ST%' and stock_name not like '%ST%' ".format(start_t,date)#and stock_id in ('002940','000812')
     time_start = datetime.datetime.now()
     df = get_df_from_db(sql, db)
     time_end = datetime.datetime.now()
@@ -179,5 +213,5 @@ def history(start_date,end_date):
     print('All subprocesses done.')
 if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
-    main(date)
-    # history('2020-01-01','2021-04-23')
+    # main(date)
+    history('2020-01-01','2021-05-06')
