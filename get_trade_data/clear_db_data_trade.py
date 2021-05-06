@@ -95,7 +95,7 @@ def run(start_date,end_date):
     p.join()
     print('All subprocesses done.')
 if __name__ == '__main__':
-    start_date = '2018-10-01'
+    start_date = '2018-01-01'
     end_date = '2021-04-30'
     # h_table = '0'
     # clear_main(h_table,start_date,end_date)
