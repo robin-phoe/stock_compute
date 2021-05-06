@@ -200,11 +200,12 @@ def history_com(start_date,end_date):
     #print('date_list:',date_list)
     p = Pool(8)
     for date_t in date_list:
-        p = Pool(8)
         date = date_t[0].strftime('%Y-%m-%d')
         print('date:',date)
         # main(date)
         p.apply_async(main, args=(date,))
+    p.close()
+    p.join()
 def run_h(start_date,end_date):
     p = Pool(8)
     for i in range(1, 11):
@@ -240,9 +241,9 @@ if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
     # run(date)
 
-    # main( date)
-
-    history_com(start_date='2020-01-01', end_date='2021-04-01')
+    main( date)
+    #
+    # history_com(start_date='2018-01-01', end_date='2020-01-01')
     # run_h(start_date='2020-07-31', end_date='2021-02-22')
 
     # test_apply()

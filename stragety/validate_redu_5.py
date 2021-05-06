@@ -67,6 +67,8 @@ def main(date):
     if date == None:
         date = datetime.datetime.now().strftime('%Y-%m-%d')
     redu_df,id_tuple = sel_remen_5(date)
+    if len(id_tuple) == 0:
+       return []
     res_list = sel_trade_data(date, id_tuple)
     return res_list
 def history(start_date,end_date):
@@ -87,9 +89,12 @@ def history(start_date,end_date):
     for date in date_tuple:
         date_str = date[0].strftime("%Y-%m-%d")
         res_list = main(date_str)
+        if len(res_list) == 0:
+            continue
         res_df.loc[len(res_df)] = res_list
     res_df['reach_rate'] = res_df['layer_1_rate'] + res_df['layer_2_rate']
     row = len(res_df)
+    res_df['reach_count'] = res_df['layer_1_count'] + res_df['layer_2_count']
     res_df.loc[row, 'layer_1_count'] = res_df['layer_1_count'].mean()
     res_df.loc[row,'layer_1_rate'] = res_df['layer_1_rate'].mean()
     res_df.loc[row, 'layer_1_rate'] = res_df['layer_1_rate'].mean()
