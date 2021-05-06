@@ -94,6 +94,7 @@ def history(start_date,end_date):
     res_df.loc[row,'layer_1_rate'] = res_df['layer_1_rate'].mean()
     res_df.loc[row, 'layer_1_rate'] = res_df['layer_1_rate'].mean()
     res_df.loc[row, 'layer_2_count'] = res_df['layer_2_count'].mean()
+    res_df.loc[row, 'layer_2_rate'] = res_df['layer_2_rate'].mean()
     res_df.loc[row, 'reach_rate'] = res_df['reach_rate'].mean()
     file_name = "./validate_report/validate_remen_5.csv"
     res_df.to_csv(file_name,encoding='utf-8')
