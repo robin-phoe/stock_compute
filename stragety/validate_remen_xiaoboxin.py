@@ -41,6 +41,20 @@ def sel_remen_xiaoboxin(date):
     id_list = remen_df['stock_id'].tolist()
     id_tuple = tuple(id_list)
     return remen_df,id_tuple
+def save(df):
+    df['layer'] = df['pl_layer1'] + df['pl_layer2']*2 + df['pl_layer3']*3 + df['pl_layer4']*4
+    df_layer = df[['layer','trade_code']]
+    cursor = db.cursor()
+    layer_list = df_layer.apply(lambda row: tuple(row), axis=1).values.tolist()
+    try:
+        sql = "update remen_xiaoboxin SET validate_layer=(%s) where trade_code=(%s)"
+        cursor.executemany(sql, layer_list)  # commit_id_list上面已经说明
+        db.commit()
+        print('存储成功。')
+    except Exception as err:
+        logging.exception('存储失败:',err)
+        db.rollback()
+        print('存储失败:',err)
 def deal_data(df):
     def com_pl(row):
         if row['call_high'] ==0 or row['close_price'] ==0:
@@ -62,11 +76,11 @@ def deal_data(df):
 def sel_trade_data(date,id_tuple):
     end_date = (datetime.datetime.strptime(date,'%Y-%m-%d')+datetime.timedelta(days=10)).strftime('%Y-%m-%d')
     if len(id_tuple) == 1:
-        sql = "select stock_id,stock_name,open_price,close_price,high_price,trade_date " \
+        sql = "select trade_code,stock_id,stock_name,open_price,close_price,high_price,trade_date " \
               "from stock_trade_data where stock_id = '{0}' and trade_date>='{1}' and trade_date<='{2}'".format(
             id_tuple[0], date, end_date)
     else:
-        sql = "select stock_id,stock_name,open_price,close_price,high_price,low_price,trade_date " \
+        sql = "select trade_code,stock_id,stock_name,open_price,close_price,high_price,low_price,trade_date " \
               "from stock_trade_data where stock_id in {0} and trade_date>='{1}' and trade_date<='{2}'".format(
             id_tuple,date,end_date)
     print('sql:',sql)
@@ -83,6 +97,7 @@ def sel_trade_data(date,id_tuple):
     trade_df['put_low_price'] = trade_df.groupby(['stock_id'])['low_price'].shift(-2)
     trade_df['put_mid_price'] = (trade_df['put_high_price'] + trade_df['put_low_price'])/2
     trade_df.fillna(0,inplace=True)
+    #计算数据
     trade_df = deal_data(trade_df)
     #删除不是今日的数据行
     trade_df.drop(trade_df[trade_df.trade_date != date].index, inplace=True)
@@ -103,6 +118,7 @@ def sel_trade_data(date,id_tuple):
     pl_layer2_count = trade_df['pl_layer2'].tolist().count(1)
     pl_layer3_count = trade_df['pl_layer3'].tolist().count(1)
     pl_layer4_count = trade_df['pl_layer4'].tolist().count(1)
+    save(trade_df)
     print('call_close_mean:{0},put_open_mean:{1},put_close_mean:{2},put_mid_mean:{3},\n,pl_layer1_count:{4},'
           'pl_layer2_count:{5},pl_layer3_count:{6},pl_layer4_count:{7},count_df:{8}'.format(
         call_close_mean,put_open_mean,put_close_mean,put_mid_mean,
@@ -162,5 +178,5 @@ def history(start_date,end_date):
     res_df.to_csv(file_name,encoding='utf-8')
 if __name__ == '__main__':
     date = '2021-04-29'
-    # main(date)
-    history('2021-04-01','2021-04-29')
+    main(date)
+    # history('2021-04-01','2021-04-29')
