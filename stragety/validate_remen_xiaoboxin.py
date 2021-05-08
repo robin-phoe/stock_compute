@@ -1,6 +1,6 @@
 #后一日hight price >=3% 触发监控，计触发数1，open price + 3% 计算为call_price
 #触发后一日open price 计为 put_open_price, close price 计为 put_close_price
-#PL_layer1: (,0] ;  PL_layer2: (0,2.5) ; PL_layer3:[2.5,6),PL_layer4:[6,)
+#pl_layer1: (,0] ;  pl_layer2: (0,2.5) ; pl_layer3:[2.5,6),pl_layer4:[6,)
 import logging
 import pymysql
 import pandas as pd
@@ -47,6 +47,15 @@ def deal_data(df):
             return row
         if row['call_high']/row['close_price'] >= 1.03:
             row['call_price'] = row['close_price']*1.03
+            pl = row['put_mid_price']/row['call_price'] -1
+            if pl <= 0:
+                row['pl_layer1'] = 1
+            elif 0< pl <0.025:
+                row['pl_layer2'] = 1
+            elif 0.025<= pl <0.06:
+                row['pl_layer3'] = 1
+            elif 0.06 <= pl:
+                row['pl_layer4'] = 1
         return row
     df = df.apply(com_pl,axis=1)
     return df
@@ -64,7 +73,7 @@ def sel_trade_data(date,id_tuple):
     trade_df = get_df_from_db(sql,db)
     # print('trade_df:',trade_df)
     trade_df['call_price'] = 0
-    trade_df['pl_close'] =trade_df['pl_open'] = trade_df['PL_layer1']= trade_df['PL_layer2']= trade_df['PL_layer3']= trade_df['PL_layer4'] = 0
+    trade_df['pl_layer1']= trade_df['pl_layer2']= trade_df['pl_layer3']= trade_df['pl_layer4'] = 0
     trade_df['call_high'] = trade_df.groupby(['stock_id'])['high_price'].shift(-1)
     trade_df['call_open'] = trade_df.groupby(['stock_id'])['open_price'].shift(-1)
     trade_df['call_close'] = trade_df.groupby(['stock_id'])['close_price'].shift(-1)
@@ -89,9 +98,17 @@ def sel_trade_data(date,id_tuple):
     put_open_mean = trade_df['put_open_pl'].mean()
     put_close_mean = trade_df['put_close_pl'].mean()
     put_mid_mean = trade_df['put_mid_pl'].mean()
-    print('call_close_mean:{},put_open_mean:{},put_close_mean:{},put_mid_mean:{}'.format(
-        call_close_mean,put_open_mean,put_close_mean,put_mid_mean))
-    return [date,call_close_mean,put_open_mean,put_close_mean,put_mid_mean]
+    count_df = len(trade_df)
+    pl_layer1_count = trade_df['pl_layer1'].tolist().count(1)
+    pl_layer2_count = trade_df['pl_layer2'].tolist().count(1)
+    pl_layer3_count = trade_df['pl_layer3'].tolist().count(1)
+    pl_layer4_count = trade_df['pl_layer4'].tolist().count(1)
+    print('call_close_mean:{0},put_open_mean:{1},put_close_mean:{2},put_mid_mean:{3},\n,pl_layer1_count:{4},'
+          'pl_layer2_count:{5},pl_layer3_count:{6},pl_layer4_count:{7},count_df:{8}'.format(
+        call_close_mean,put_open_mean,put_close_mean,put_mid_mean,
+        pl_layer1_count,pl_layer2_count,pl_layer3_count,pl_layer4_count,count_df))
+    return [date,call_close_mean,put_open_mean,put_close_mean,put_mid_mean,
+            count_df,pl_layer1_count,pl_layer2_count,pl_layer3_count,pl_layer4_count]
     
 
 def main(date):
@@ -107,7 +124,12 @@ def history(start_date,end_date):
             'call_close_mean': [],
             'put_open_mean': [],
             'put_close_mean': [],
-            'put_mid_mean': []
+            'put_mid_mean': [],
+            'count_df':[],
+            'pl_layer1_count':[],
+            'pl_layer2_count':[],
+            'pl_layer3_count':[],
+            'pl_layer4_count':[],
             }
     res_df = pd.DataFrame(data)
     sql = "select distinct(trade_date) from com_redu_test where trade_date >= '{}' and trade_date <= '{}'".format(start_date,end_date)
@@ -127,9 +149,18 @@ def history(start_date,end_date):
     res_df.loc[row,'put_open_mean'] = res_df['put_open_mean'].mean()
     res_df.loc[row, 'put_close_mean'] = res_df['put_close_mean'].mean()
     res_df.loc[row, 'put_mid_mean'] = res_df['put_mid_mean'].mean()
+    res_df.loc[row, 'count_df'] = res_df['count_df'].sum()
+    res_df.loc[row, 'pl_layer1_count'] = res_df['pl_layer1_count'].sum()
+    res_df.loc[row, 'pl_layer2_count'] = res_df['pl_layer2_count'].sum()
+    res_df.loc[row, 'pl_layer3_count'] = res_df['pl_layer3_count'].sum()
+    res_df.loc[row, 'pl_layer4_count'] = res_df['pl_layer4_count'].sum()
+    res_df['pl_layer1_rate'] = res_df['pl_layer1_count'] / res_df['count_df'] * 100
+    res_df['pl_layer2_rate'] = res_df['pl_layer2_count'] / res_df['count_df'] * 100
+    res_df['pl_layer3_rate'] = res_df['pl_layer3_count'] / res_df['count_df'] * 100
+    res_df['pl_layer4_rate'] = res_df['pl_layer4_count'] / res_df['count_df'] * 100
     file_name = "./validate_report/validate_xiaoboxin.csv"
     res_df.to_csv(file_name,encoding='utf-8')
 if __name__ == '__main__':
     date = '2021-04-29'
     # main(date)
-    history('2018-01-01','2021-04-29')
+    history('2021-04-01','2021-04-29')

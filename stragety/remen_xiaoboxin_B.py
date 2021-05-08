@@ -213,5 +213,5 @@ def history(start_date,end_date):
     print('All subprocesses done.')
 if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
-    # main(date)
-    history('2020-01-01','2021-05-06')
+    main(date)
+    # history('2020-01-01','2021-05-06')
