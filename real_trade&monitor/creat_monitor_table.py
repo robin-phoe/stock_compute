@@ -21,7 +21,7 @@ def creat_sql(trade_date):
                            ' AND monitor = 1'
     table_dict['remen_xiaoboxin'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin" ' \
                                    'FROM remen_xiaoboxin ' \
-                                   'WHERE trade_date = "{0}" AND grade >= 0 AND monitor = 1 '.format(trade_date)
+                                   'WHERE trade_date = "{0}"  AND monitor = 1 '.format(trade_date) #AND grade >= 0 分数尚未完善
 def sel_lastest_day():
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
     sql  = "select max(trade_date) from remen_xiaoboxin"

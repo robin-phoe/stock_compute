@@ -43,6 +43,7 @@ def sel_remen_xiaoboxin(date):
     return remen_df,id_tuple
 def save(df):
     df['layer'] = df['pl_layer1'] + df['pl_layer2']*2 + df['pl_layer3']*3 + df['pl_layer4']*4
+    # print('check layer:',df['pl_layer1'],df['pl_layer2'],df['pl_layer3'],df['pl_layer4'])
     df_layer = df[['layer','trade_code']]
     cursor = db.cursor()
     layer_list = df_layer.apply(lambda row: tuple(row), axis=1).values.tolist()
@@ -177,6 +178,6 @@ def history(start_date,end_date):
     file_name = "./validate_report/validate_xiaoboxin.csv"
     res_df.to_csv(file_name,encoding='utf-8')
 if __name__ == '__main__':
-    date = '2021-04-29'
+    date = '2021-05-06'
     main(date)
     # history('2021-04-01','2021-04-29')
