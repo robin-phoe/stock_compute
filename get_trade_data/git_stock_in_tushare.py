@@ -83,7 +83,6 @@ def main(update_flag = 0):
     #get_data(stock_id='000790')
     # stock_id_list=select_info(db)
     #stock_id_list = [('002038',)]
-
     # for stock in stock_id_list:
     #     print('stock[0]:',stock[0])
     #     get_data(stock[0],db)
