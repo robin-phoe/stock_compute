@@ -59,9 +59,11 @@ def deal_data(lastest_day):
     db.commit()
     print('{}：存储成功'.format(lastest_day))
     cursor.close()
-def main():
-    lastest_day = sel_lastest_day()
+def main(lastest_day):
+    if lastest_day == None:
+        lastest_day = sel_lastest_day()
     creat_sql(lastest_day)
     deal_data(lastest_day)
 if __name__ == '__main__':
-    main()
+    date = None#'2021-05-07'
+    main(date)
