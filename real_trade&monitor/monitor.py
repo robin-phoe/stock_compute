@@ -42,8 +42,9 @@ def write_init_data():
     cursor.close()
 def wx_send_message(message,image_path):
     global bot
-    # my_groups = bot.groups().search(u'7个涨停翻一番')[0]
-    my_groups = bot.friends().search(u'7个涨停翻一番')[0]
+    # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
+    my_groups = bot.groups().search(u'有赚就行')[0]
+    # my_groups = bot.friends().search(u'7个涨停翻一番')[0]
     my_groups.send(message)
     my_groups.send_image(image_path)
     time.sleep(1)
@@ -153,7 +154,7 @@ def monitor_core_increase(id):
                 inform_type = monitor_type + '_inc_5'
             else:
                 return
-        elif increase != '-' and increase != None and float(increase) >= 3:
+        elif increase != '-' and increase != None and float(increase) >= 2.5:
             if r.get(id + monitor_type + '_flag_2') != '1' :
                 print('flag_2:',r.get(id + monitor_type + '_flag_2'))
                 # print(id,'增长超过%3!：',increase)
