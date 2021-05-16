@@ -19,6 +19,136 @@ db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", d
 #登录微信
 bot = Bot(cache_path=True)
 monitor_info_dict = {}
+def get_df_from_db(sql):
+    global db
+    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
+    cursor.execute(sql)  # 执行SQL语句
+    data = cursor.fetchall()
+    # 下面为将获取的数据转化为dataframe格式
+    columnDes = cursor.description  # 获取连接对象的描述信息
+    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
+    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
+    #df = df.set_index(keys=['trade_date'])
+    df = df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last')
+    df.reset_index(inplace=True)
+    df['trade_date2'] = df['trade_date'].copy()
+    df['trade_date'] = [x.strftime('%Y-%m-%d') for x in df['trade_date']]
+    # df['trade_date'] = pd.to_datetime(df['trade_date']).map(date2num)
+    df['dates'] = np.arange(0, len(df))
+    cursor.close()
+    # print("df:",df)
+    # df['trade_date'] = date2num(df['trade_date'])
+    return df
+class creat_df_from_db:
+    def __init__(self):
+        pass
+    def creat_df(self,sql):
+        global db
+        cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
+        cursor.execute(sql)  # 执行SQL语句
+        data = cursor.fetchall()
+        # 下面为将获取的数据转化为dataframe格式
+        columnDes = cursor.description  # 获取连接对象的描述信息
+        columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
+        df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
+        df = df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last')
+        df.reset_index(inplace=True)
+        cursor.close()
+        return df
+class stock:
+    in_bk_rank = 0
+    bk_increase = 0
+    increase = 0
+    new_price = 0
+    monitor_inc3_flag = False
+    monitor_inc5_flag = False
+    monitor_fast_flag = False
+    def __init__(self,stock_name,stock_id,bk_name,increase,new_price,monitor_type):
+        self.stock_name = stock_name
+        self.stock_id = stock_id
+        self.bk_name = bk_name
+        self.monitor_type = monitor_type
+class bk:
+    increase = 0 #板块增长
+    amount = 0 #板块成交量
+    member_trade_info = {} #成员实时交易信息
+    member_rank = {} #板块内成员排序
+    def __init__(self,name,id,member):
+        self.name = name
+        self.id = id
+        self.member = member
+    def __get_member_trade_info(self):
+        pass
+    def __sort_member(self):
+        pass
+    def get_bk_info(self):
+        return (self.name,self.id,self.member,self.increase,self.amount)
+    def get_stock_for_bk(self,stock_id):
+        self.__sort_member()
+        rank = self.member_rank[stock_id]
+        return (increase,amount,rank)
+class stock_buffer:
+    stock_dict = {}  # {stock_id:instance}
+    def __init__(self):
+        pass
+    def __select_monitor(self):
+        global r, db
+        cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
+        sql = "select max(trade_date) from monitor"
+        cursor.execute(sql)  # 执行SQL语句
+        yesterday = cursor.fetchall()[0][0].strftime("%Y-%m-%d")
+        cursor.close()
+        logging.info('monitor date:{}'.format(yesterday))
+        print('monitor date:{}'.format(yesterday))
+        sql = "select M.stock_id,M.stock_name,M.grade,M.monitor_type,I.bk_name from monitor M " \
+              " LEFT JOIN stock_informations I " \
+              "ON M.stock_id = I.stock_id " \
+              " where trade_date = '{}' and monitor=1 ".format(
+            yesterday)
+        made_df = creat_df_from_db()
+        df = made_df.creat_df(sql)
+        return df
+    def fill_stock_buffer(self):
+        df = self.__select_monitor()
+        def write_instance(raw):
+            stoc = stcok(stock_name = raw['stock_name'],stock_id = raw['stock_id'],bk_name = raw['bk_name'],
+                         monitor_type = raw['monitor_type'])
+            stock_dict[raw['stock_id']] = stoc
+        df.apply(write_instance,axis=1)
+
+
+class bk_buffer:
+    bk_dict = {} #{bk_id:instance}
+    def __init__(self):
+        pass
+    def __select_bk_info(self):
+        #待优化，stock_information 表中没有bankuai_code ，须补上
+        sql = "select I.stock_id,I.bk_name,B.bankuai_code from stock_informations I " \
+              " LEFT JOIN bankuai_day_data B " \
+              " ON I.bk_name = B.bk_name "
+        made_df = creat_df_from_db()
+        df = made_df.creat_df(sql)
+        return df
+    def fill_bk_buffer(self):
+        df = self.__select_bk_info()
+        bk_set = set(df['bankuai_name'].tolist())
+        def write_instance(raw,bk_instance,bk_name,axis=1):
+            if raw['bankuai_name'] == bk_name:
+                bk_instance.name = raw['bankuai_code']
+                bk_instance.member.append(raw['stock_id'])
+        for bk_name in bk_set:
+            bk_instance = bk(name = bk_name,id = 'fill',member = [])
+            df.apply(write_instance,bk_instance,bk_name)
+            self.bk_dict[bk_name] = bk_instance
+    def set_bk_instance(self,bk_id,instance):
+        self.bk_dict[bk_id] = instance
+    def get_bk_instance(self,stock_id):
+        if stock_id not in self.bk_dict:
+            return false
+        else:
+            return self.bk_dict[stock_id]
+    def get_buffer_all_key(self):
+        return self.bk_dict.keys()
 def write_init_data():
     global r,db
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
@@ -48,26 +178,7 @@ def wx_send_message(message,image_path):
     my_groups.send(message)
     my_groups.send_image(image_path)
     time.sleep(1)
-def get_df_from_db(sql):
-    global db
-    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    cursor.execute(sql)  # 执行SQL语句
-    data = cursor.fetchall()
-    # 下面为将获取的数据转化为dataframe格式
-    columnDes = cursor.description  # 获取连接对象的描述信息
-    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
-    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
-    #df = df.set_index(keys=['trade_date'])
-    df = df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last')
-    df.reset_index(inplace=True)
-    df['trade_date2'] = df['trade_date'].copy()
-    df['trade_date'] = [x.strftime('%Y-%m-%d') for x in df['trade_date']]
-    # df['trade_date'] = pd.to_datetime(df['trade_date']).map(date2num)
-    df['dates'] = np.arange(0, len(df))
-    cursor.close()
-    # print("df:",df)
-    # df['trade_date'] = date2num(df['trade_date'])
-    return df
+
 def draw_k_line(id,inform_type):
     global db
     cursor = db.cursor()
