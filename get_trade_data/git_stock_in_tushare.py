@@ -1,5 +1,6 @@
 '''
-数据来源：tushare
+待优化：
+1、update 的df转存储，待优化成excutemany
 '''
 #coding=utf-8
 import requests
@@ -11,12 +12,26 @@ import logging
 import json
 import time
 import tushare as ts
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 
-logging.basicConfig(level=logging.DEBUG, filename='../stock_base_tushare.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/stock_base_tushare.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 #初始化tushare api
 pro = ts.pro_api('87b1df604b58eac3662ebaeabe6bb3436792125d2bf1f73a4a11f06a')
+def get_df_from_db(sql, db):
+    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
+    cursor.execute(sql)  # 执行SQL语句
+    data = cursor.fetchall()
+    # 下面为将获取的数据转化为dataframe格式
+    columnDes = cursor.description  # 获取连接对象的描述信息
+    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
+    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
+    cursor.close()
+    return df
 def git_base_info(db):
     #清除原数据
     # sql = "delete from stock_informations"
@@ -52,11 +67,7 @@ def git_base_info(db):
     cursor.close()
 
 def update_other_tab(db):
-    #历史记录分表
-    for i in range(0,10):
-        h_tab_list = 'stock_history_trade'+str(i)
-    table_list = ['']
-    # table_list.extend(h_tab_list)
+    table_list = ['stock_trade_data',]
     sql = "select * from stock_informations"
     df = get_df_from_db(sql, db)
     cursor = db.cursor()
@@ -64,20 +75,26 @@ def update_other_tab(db):
         stock_name = df.loc[i,'stock_name']
         bk_name = df.loc[i,'stock_name']
         stock_id = df.loc[i, 'stock_id']
-        h_table = df.loc[i, 'h_table']
+        print('stock_id:{}'.format(stock_id))
         for tab in table_list:
-            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab,stock_name,bk_name,
+            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name,
+                                                                                                bk_name,
                                                                                                 stock_id)
             cursor.execute(sql)
-        #update history table
-        tab = 'stock_history_trade'+str(i)
-        sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name, bk_name,
-                                                                                            stock_id)
-        cursor.execute(sql)
+    try:
+
+        db.commit()
+        print('存储完成')
+    except Exception as err:
+        db.rollback()
+        print('存储失败:id:{},{}'.format(stock_id, err))
+        logging.error('存储失败:id:{},{}'.format(stock_id, err))
     cursor.close()
 
 def main(update_flag = 0):
-    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+    db_config = read_config('db_config')
+    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                         password=db_config["password"], database=db_config["database"])
     # cursor = db.cursor()
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
@@ -87,8 +104,8 @@ def main(update_flag = 0):
     #     print('stock[0]:',stock[0])
     #     get_data(stock[0],db)
     if update_flag ==1:
-        update_other_tab(db)
         git_base_info(db)
+        update_other_tab(db)
     elif update_flag == 0:
         git_base_info(db)
     elif update_flag == 2:
@@ -97,6 +114,6 @@ def main(update_flag = 0):
 
 
 if __name__ == '__main__':
-    main(update_flag = 0)
+    main(update_flag = 2)
 
 

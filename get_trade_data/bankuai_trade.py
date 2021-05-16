@@ -10,9 +10,17 @@ import pymysql
 import logging
 import json
 import datetime
-logging.basicConfig(level=logging.DEBUG,filename='bankuai_trade.log',filemode='w',
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
+
+logging.basicConfig(level=logging.DEBUG,filename='../log/bankuai_trade.log',filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
-db = pymysql.connect("localhost","root","Zzl08382020","stockdb" )
+
+db_config = read_config('db_config')
+db = pymysql.connect(host=db_config["host"], user=db_config["user"],
+                     password=db_config["password"], database=db_config["database"])
 
 count=0
 bk_dict = {}
@@ -28,9 +36,9 @@ def get_history():
         bk_dict[bankuai_info[i][0]] = bankuai_info[i][1]
     print('bk_dict:',bk_dict)
     for bk in bk_dict:
-        url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?cb=jQuery112409565109930423827_1607350575238&secid=90.{}&ut=" \
+        url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?cb=jQuery112409565109930423827_1607350575238&secid=90.{0}&ut=" \
               "fa5fd1943c7b386f172d6893dbfba10b&fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58&klt=" \
-              "101&fqt=0&beg=20200101&end=20220101&_=1607350575239".format(bk)
+              "101&fqt=0&beg={1}&end={2}&_=1607350575239".format(bk,'20200101','20220101') #20200101
         print('url:',url)
         header={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'}
         response = requests.get(url,headers=header)
@@ -66,7 +74,7 @@ def get_history():
                 logging.error('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
                 print('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
     cursor.close()
-def com_his_rank(start_date = '2020-01-01',end_date = '2020-12-28'):
+def com_his_rank(start_date = '2020-01-01',end_date = '2021-05-15'):
     global bk_dict
     cursor = db.cursor()
     datestart = datetime.datetime.strptime(start_date, '%Y-%m-%d')
@@ -168,9 +176,9 @@ def main(date):
         page = int(page) + 1
     save_sort()
 if __name__ == '__main__':
-    date = '20210202'#None
-    main(date)
-    # get_history()
-    # com_his_rank(start_date='2020-12-20', end_date='2020-12-29')
-    print('completed!')
+    date = None
+    # main(date)
+    get_history()
+    com_his_rank(start_date='2020-12-20', end_date='2020-12-29')
+    # print('completed!')
 
