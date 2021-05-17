@@ -73,7 +73,7 @@ def update_other_tab(db):
     cursor = db.cursor()
     for i in range(len(df)):
         stock_name = df.loc[i,'stock_name']
-        bk_name = df.loc[i,'stock_name']
+        bk_name = df.loc[i,'bk_name']
         stock_id = df.loc[i, 'stock_id']
         print('stock_id:{}'.format(stock_id))
         for tab in table_list:
