@@ -16,8 +16,7 @@ logging.basicConfig(level=logging.DEBUG, filename='../log/monitor.log', filemode
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
-#登录微信
-bot = Bot(cache_path=True)
+
 monitor_info_dict = {}
 def get_df_from_db(sql):
     global db
@@ -149,6 +148,20 @@ class bk_buffer:
             return self.bk_dict[stock_id]
     def get_buffer_all_key(self):
         return self.bk_dict.keys()
+class wx_send_message:
+    def __init__(self):
+        self.bot = Bot(cache_path=True)
+    def send_message(self,message,image_path):
+        # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
+        my_groups = self.bot.groups().search(u'有赚就行')[0]
+        # my_groups = bot.friends().search(u'7个涨停翻一番')[0]
+        my_groups.send(message)
+        my_groups.send_image(image_path)
+        time.sleep(1)
+class draw_k_line:
+    def __init__(self):
+        pass
+
 def write_init_data():
     global r,db
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
@@ -172,13 +185,6 @@ def write_init_data():
     cursor.close()
 def wx_send_message(message,image_path):
     global bot
-    # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
-    my_groups = bot.groups().search(u'有赚就行')[0]
-    # my_groups = bot.friends().search(u'7个涨停翻一番')[0]
-    my_groups.send(message)
-    my_groups.send_image(image_path)
-    time.sleep(1)
-
 def draw_k_line(id,inform_type):
     global db
     cursor = db.cursor()
