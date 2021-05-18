@@ -23,13 +23,16 @@ db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", d
 cursor = db.cursor()
 count=0
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
-#获取单个页面股票数据
+"""
+获取单个页面股票数据
+"""
 def getOnePageStock(page):
     global count,r
-    # url = "http://18.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112406268274658974922_1605597357094&pn={}" \
-    #       "&pz=20&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:13," \
-    #       "m:0+t:80,m:1+t:2,m:1+t:23&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20," \
-    #       "f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152&_=1605597357108".format(page)
+
+    url = "http://18.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112406268274658974922_1605597357094&pn={}" \
+          "&pz=20&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:13," \
+          "m:0+t:80,m:1+t:2,m:1+t:23&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20," \
+          "f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152&_=1605597357108".format(page)
     url = "http://18.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112406268274658974922_1605597357094&pn={}" \
           "&pz=20&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:13," \
           "m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f12&_=1605597357108".format(page)
@@ -48,8 +51,16 @@ def getOnePageStock(page):
     for data in Data_json:
         # print('data:',data)
         id = data['f12']
-        r.set(id + '_price',data['f2'])
-        r.set(id + '_increase', data['f3'])
+        price = data['f2']
+        increase = data['f3']
+        if price == '-':
+            price = 0
+        if increase == '-':
+            increase = 0
+        # r.set(id + '_price',data['f2'])
+        # r.set(id + '_increase', data['f3'])
+        r.lpush(id + '_price_list', price)
+        r.lpush(id + '_increase_list', increase)
     #     trade_code=date_str+data['f12']
     #     print(trade_code)
     #     sql = "select h_table from stock_informations where stock_id={}".format(data['f12'])
@@ -79,6 +90,10 @@ def getOnePageStock(page):
     #             logging.error('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
     #             print('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
     return 1
+"""
+将键值对行情存入列表
+废弃。修改后行情直接存入列表
+"""
 def market_tranfer():
     len_monitor = r.llen('monitor_list')
     print('len_monitor',len_monitor)
@@ -92,7 +107,9 @@ def market_tranfer():
             r.lpush(id+'_price_list',r.get(id+'_price'))
             # print(id+'price_list:',r.lrange(id+'_price_list',0,r.llen(id+'_price_list')))
             r.lpush(id + '_increase_list', r.get(id + '_increase'))
-
+"""
+单进程获取，测试使用
+"""
 def main():
     # print('时间1:',datetime.datetime.now().strftime('%H:%M:%S,%f'))
     flag = 1
@@ -102,6 +119,9 @@ def main():
         flag = getOnePageStock(str(page))
         print('flag:',flag)
         page = int(page) + 1
+"""
+多进程执行获取行情
+"""
 def run():
     p = Pool(8)
     for i in range(220):
@@ -110,28 +130,28 @@ def run():
     #print('Waiting for all subprocesses done...')
     p.close()
     p.join()
-    market_tranfer()
+    # market_tranfer()
     # print('All subprocesses done.')
 if __name__ == '__main__':
-    # run()
+    run()
     # main()
-    i=0
-    flush_flag = 1
-    while True:
-        time_now = datetime.datetime.now().strftime("%H:%M:%S")
-        if flush_flag ==1:
-            r.flushdb()
-            print('已清空redis')
-            flush_flag = 0
-        elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
-            time1 = datetime.datetime.now()
-            # main()
-            run()
-            time2 = datetime.datetime.now()
-            time_delta = time2 - time1
-            print('时间:',i,  time2.strftime('%H:%M:%S,%f'))
-            print('时间差:',time_delta)
-            i+=1
-            time.sleep(50)
-        time.sleep(1)
+    # i=0
+    # flush_flag = 1
+    # while True:
+    #     time_now = datetime.datetime.now().strftime("%H:%M:%S")
+    #     if flush_flag ==1:
+    #         r.flushdb()
+    #         print('已清空redis')
+    #         flush_flag = 0
+    #     elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
+    #         time1 = datetime.datetime.now()
+    #         # main()
+    #         run()
+    #         time2 = datetime.datetime.now()
+    #         time_delta = time2 - time1
+    #         print('时间:',i,  time2.strftime('%H:%M:%S,%f'))
+    #         print('时间差:',time_delta)
+    #         i+=1
+    #         time.sleep(50)
+    #     time.sleep(1)
 
