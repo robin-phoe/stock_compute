@@ -67,7 +67,7 @@ def git_base_info(db):
     cursor.close()
 
 def update_other_tab(db):
-    table_list = ['stock_trade_data',]
+    table_list = ['stock_trade_data','monitor','com_zhuang']
     sql = "select * from stock_informations"
     df = get_df_from_db(sql, db)
     cursor = db.cursor()
@@ -77,9 +77,7 @@ def update_other_tab(db):
         stock_id = df.loc[i, 'stock_id']
         print('stock_id:{}'.format(stock_id))
         for tab in table_list:
-            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name,
-                                                                                                bk_name,
-                                                                                                stock_id)
+            sql = "update {0} set stock_name='{1}' where stock_id = '{2}'".format(tab, stock_name,stock_id)
             cursor.execute(sql)
     try:
 
