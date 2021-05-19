@@ -24,7 +24,7 @@ db = pymysql.connect(host=db_config["host"], user=db_config["user"],
 
 count=0
 bk_dict = {}
-#获取单个页面板块数据
+"""获取单个板块历史数据"""
 def get_history():
     cursor = db.cursor()
     sql ="select distinct bankuai_code,bankuai_name from bankuai_day_data"
@@ -92,6 +92,7 @@ def com_his_rank(start_date = '2020-01-01',end_date = '2021-05-15'):
         print('bk_dict:',bk_dict)
         save_sort()
     cursor.close()
+"""获取当日全部板块信息"""
 def getOnePageStock(page,date_str):
     global count
     cursor = db.cursor()
