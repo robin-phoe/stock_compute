@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 import re
 
-logging.basicConfig(level=logging.ERROR, filename='../log/monitor.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/monitor.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
@@ -35,21 +35,6 @@ class creat_df_from_db:
         cursor.close()
         return df
 class stock:
-    in_bk_rank = 0
-    bk_increase = 0
-    new_increase = 0
-    increase = 0
-    new_price = 0
-    price = 0
-    price_list = []#从左边填入
-    monitor_inc3_flag = 'True'
-    monitor_inc5_flag = 'True'
-    monitor_fast_flag = 'True'
-    message = None
-    inform_type = None
-    inform_flag = False #是否触发了通告
-    modify_flag = False #修改数据时间改为True
-    chart_title = None
     def __init__(self,stock_name,stock_id,bk_name,monitor_type,grade,monitor):
         self.stock_name = stock_name
         self.stock_id = stock_id
@@ -57,6 +42,22 @@ class stock:
         self.monitor_type = monitor_type
         self.grade = grade
         self.monitor = monitor #1为监控
+        self.in_bk_rank = 0
+        self.bk_increase = 0
+        self.new_increase = 0
+        self.increase = 0
+        self.new_price = 0
+        self.price = 0
+        self.price_list = []  # 从左边填入
+        self.monitor_inc3_flag = 'True'
+        self.monitor_inc5_flag = 'True'
+        self.monitor_fast_flag = 'True'
+        self.message = None
+        self.inform_type = None
+        self.inform_flag = False  # 是否触发了通告
+        self.modify_flag = False  # 修改数据时间改为True
+        self.chart_title = None
+        self.get_status_from_redis()  # 从redis验证monitor_flag
     def get_real_data(self):
         len_pre = r.llen('{}_price_list'.format(self.stock_id))
         """判断redis中是否开始有行情"""
@@ -65,30 +66,30 @@ class stock:
         """判断class中price_list是否完整"""
         if len(self.price_list) < len_pre:
             self.price_list = r.lrange('{}_price_list'.format(self.stock_id),0,-1)
+        else:
+            self.price_list.append(self.new_price)
         self.new_price = float(r.lindex('{}_price_list'.format(self.stock_id),0))
-        self.increase = float(r.lindex('{}_increase_list'.format(self.stock_id),0))
-        self.price_list.append(self.new_price)
+        self.new_increase = float(r.lindex('{}_increase_list'.format(self.stock_id),0))
         return True
     def refresh_data(self):
-        if self.get_real_data():
+        if not self.get_real_data():
             return False
         if self.price == self.new_price:
             return
-        get_status_from_redis() #从redis验证monitor_flag
         self.increase = self.new_increase
         self.price = self.new_price
         self.modify_flag = True
         # self.compute_monitor()
     """当modify_flag为True，进行计算"""
     def compute_monitor(self):
-        # if self.monitor != 1:
-        #     return
+        if self.monitor != 1:
+            return
         if self.increase >= 5 and self.monitor_inc5_flag == 'True':
             self.inform_type = '涨幅超过5%'
             self.monitor_inc5_flag = False
             r.hset('monitor_flag', '{}_inc5_flag'.format(self.stock_id),'False')
         elif self.increase >= 2.5 and self.monitor_inc3_flag == 'True':
-            self.inform_type = '涨幅超过2.5'
+            self.inform_type = '涨幅超过2.5%'
             self.monitor_inc3_flag = False
             r.hset('monitor_flag', '{}_inc3_flag'.format(self.stock_id), 'False')
         else:
@@ -98,10 +99,11 @@ class stock:
         if bk:
             self.bk_increase = bk.increase
             self.in_bk_rank = bk.get_rank_in_bk(self.stock_id)
+            logging.debug('bk name:{},mem_len:{},mem_set_len:{},bk_members:{}'.format(bk.name,len(bk.members),len(set(bk.members)),bk.members))
         else:
             print('{0} {1} Not exist!'.format(self.stock_name,self.bk_name))
             logging.error('{0} {1} Not exist!'.format(self.stock_name,self.bk_name))
-        self.message = "{0} {1} 通知原因：{2} ! 涨幅：{3}。监控类型：{4}。分数：{5}。板块名称：{6}。板块涨幅：{7}。板块内排名：{8}。".format(
+        self.message = "【{0}】{1} 通知原因：{2} ! 涨幅：{3}。监控类型：{4}。分数：{5}。板块：{6}。板块涨幅：{7}。板块内排名：{8}。".format(
             self.stock_name,self.stock_id,self.inform_type,self.increase,self.monitor_type,self.grade,self.bk_name,self.bk_increase,
             self.in_bk_rank
         )
@@ -116,16 +118,15 @@ class stock:
         inc3_flag = r.hget('monitor_flag', '{}_inc3_flag'.format(self.stock_id))
         if inc3_flag != None:
             self.monitor_inc3_flag = inc3_flag
-
 class bk:
-    increase = 0 #板块增长
-    amount = 0 #板块成交量
-    member_real_info = {} #成员实时交易信息
-    member_rank = {} #板块内成员排序
     def __init__(self,name,id,members):
         self.name = name
         self.id = id
         self.members = members #列表
+        self.increase = 0  # 板块增长
+        self.amount = 0  # 板块成交量
+        self.member_real_info = {}  # 成员实时交易信息
+        self.member_rank = {}  # 板块内成员排序
     def __get_member_real_info(self):
         for mem in self.members:
             if mem in stock_buffer.stock_dict:
@@ -134,11 +135,17 @@ class bk:
             else:
                 logging.error('bk:{} member:{}  not in stock_buffer.stock_dict:{}'.format(self.name,mem,stock_buffer.stock_dict))
     def __get_bk_real_info(self):
-        pass
+        inc = r.hget('bk_increase',self.id)
+        if inc == None:
+            self.increase = 0
+        else:
+            self.increase = inc
     def __sort_member(self):
         mem_list = sorted(self.member_real_info.items(), key=lambda d: d[1], reverse=True) #倒序
+        # logging.info('mem_list:{}'.format(mem_list))
         for i in range(len(mem_list)):
             self.member_rank[mem_list[i][0]] = i+1
+        # logging.info('member_rank:{}'.format(self.member_rank))
     def refresh_bk_info(self):
         self.__get_member_real_info()
         self.__get_bk_real_info()
@@ -150,9 +157,8 @@ class bk:
         rank = self.member_rank[stock_id]
         return rank
 class stock_buffer:
-    stock_dict = {}  # {stock_id:instance}
     def __init__(self):
-        pass
+        self.stock_dict = {}  # {stock_id:instance}
     def __select_monitor(self):
         global r, db
         cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
@@ -181,9 +187,8 @@ class stock_buffer:
         else:
             return self.stock_dict[id]
 class bk_buffer:
-    bk_dict = {} #{bk_id:instance}
     def __init__(self):
-        pass
+        self.bk_dict = {} #{bk_id:instance}
     def __select_bk_info(self):
         #待优化，stock_information 表中没有bk_code ，须补上
         sql = "select I.stock_id,I.bk_name,B.bk_code from stock_informations I " \
@@ -191,7 +196,7 @@ class bk_buffer:
               " ON I.bk_name = B.bk_name "
         made_df = creat_df_from_db()
         df = made_df.creat_df(sql)
-        # print('df:',df)
+        print('df:',df)
         return df
     def init_bk_buffer(self):
         df = self.__select_bk_info()
@@ -199,7 +204,12 @@ class bk_buffer:
         def write_instance(raw,bk_instance,bk_name):
             if raw['bk_name'] == bk_name:
                 bk_instance.name = raw['bk_name']
-                bk_instance.members.append(raw['stock_id'])
+                if raw['bk_code'] != None:
+                    bk_instance.id = raw['bk_code']
+                else:
+                    bk_instance.id = 'B000'
+                if raw['stock_id'] not in bk_instance.members:
+                    bk_instance.members.append(raw['stock_id'])
         for bk_name in bk_set:
             bk_instance = bk(name = bk_name,id = 'fill',members = [])
             df.apply(write_instance,args=(bk_instance,bk_name),axis=1)
@@ -224,13 +234,12 @@ class wx_send_message:
         my_groups.send_image(image_path)
         time.sleep(1)
 class draw_k_line:
-    id = None
-    df = None
-    info_df = None
-    image_path = None
-    to_day =None
     def __init__(self):
-        pass
+        self.id = None
+        self.df = None
+        self.info_df = None
+        self.image_path = None
+        self.to_day = None
     def select_df(self):
         cf = creat_df_from_db()
         self.to_day = datetime.datetime.now().strftime('%Y%m%d')
@@ -279,7 +288,14 @@ class draw_k_line:
         plt.plot(self.df['dates'], self.df['5'])
         zhuang_section = self.info_df.loc[0,'zhuang_section']
         # print('zhuang_section:', zhuang_section)
-        for zhaung_tup in eval(zhuang_section):
+        try:
+            zhuang_section = eval(zhuang_section)
+        except Exception as err:
+            if zhuang_section == None:
+                zhuang_section = []
+            logging.error('ERR:{} zhuang_section:{},df:{}'.format(err,zhuang_section,self.info_df))
+            print('ERR:{} zhuang_section:{},df:{}'.format(err,zhuang_section,self.info_df))
+        for zhaung_tup in zhuang_section:
             sta = self.__comput_ind(zhaung_tup[1])
             end = self.__comput_ind(zhaung_tup[0])
             print('indexs:', sta, end)
@@ -295,6 +311,7 @@ class main:
     def __init__(self):
         pass
     def run_once(self):
+        start_time = datetime.datetime.now()
         for stock_id in stock_buffer.stock_dict:
             stock_buffer.stock_dict[stock_id].refresh_data()
         for bk_name in bk_buffer.bk_dict:
@@ -308,7 +325,10 @@ class main:
                 dk = draw_k_line()
                 dk.draw_image(stock.stock_id,stock.chart_title)
                 self.wx_send.send_message(stock.message,dk.image_path)
+                logging.debug('message:{}'.format(stock.message))
                 stock.inform_type = False
+                del dk
+        print('耗时：',datetime.datetime.now() - start_time)
     def run(self):
         while True:
             self.run_once()
