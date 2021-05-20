@@ -48,6 +48,9 @@ class stock:
         self.increase = 0
         self.new_price = 0
         self.price = 0
+        self.high_price = 0
+        self.low_price = 0
+        self.open_price = 0
         self.price_list = []  # 从左边填入
         self.monitor_inc3_flag = 'True'
         self.monitor_inc5_flag = 'True'
@@ -70,6 +73,9 @@ class stock:
             self.price_list.append(self.new_price)
         self.new_price = float(r.lindex('{}_price_list'.format(self.stock_id),0))
         self.new_increase = float(r.lindex('{}_increase_list'.format(self.stock_id),0))
+        self.open_price = float(r.hget('open_price',self.stock_id))
+        self.high_price = float(r.hget('high_price', self.stock_id))
+        self.low_price = float(r.hget('low_price', self.stock_id))
         return True
     def refresh_data(self):
         if not self.get_real_data():
@@ -95,6 +101,7 @@ class stock:
         else:
             self.modify_flag = False
             return
+        """获取板块信息"""
         bk = bk_buffer.get_bk_instance(self.bk_name)
         if bk:
             self.bk_increase = bk.increase
@@ -127,6 +134,7 @@ class bk:
         self.amount = 0  # 板块成交量
         self.member_real_info = {}  # 成员实时交易信息
         self.member_rank = {}  # 板块内成员排序
+        self.mem_count = 0
     def __get_member_real_info(self):
         for mem in self.members:
             if mem in stock_buffer.stock_dict:
@@ -154,7 +162,7 @@ class bk:
         return (self.name,self.id,self.member,self.increase,self.amount)
     def get_rank_in_bk(self,stock_id):
         self.__sort_member()
-        rank = self.member_rank[stock_id]
+        rank = "{}/{}".format(self.member_rank[stock_id],self.mem_count)
         return rank
 class stock_buffer:
     def __init__(self):
@@ -213,6 +221,7 @@ class bk_buffer:
         for bk_name in bk_set:
             bk_instance = bk(name = bk_name,id = 'fill',members = [])
             df.apply(write_instance,args=(bk_instance,bk_name),axis=1)
+            bk_instance.mem_count = len(bk_instance.members)
             self.bk_dict[bk_name] = bk_instance
     def set_bk_instance(self,bk_name,instance):
         self.bk_dict[bk_name] = instance
@@ -253,6 +262,9 @@ class draw_k_line:
                    " ON I.stock_id = Z.stock_id " \
                    " WHERE I.stock_id = '{}'".format(self.id)
         self.info_df = cf.creat_df(info_sql)
+    def insert_today_trade(self,open,high,low,new_price):
+        today_date = datetime.datetime.now()
+        self.df.loc[len(self.df)] = [today_date,open,new_price,high,low]
     def __comput_ind(self,time):
         time = time[0:10]
         ind = self.df.query("trade_date == '{}'".format(time))
@@ -261,9 +273,10 @@ class draw_k_line:
             return ind.index[0]
         else:
             return 0
-    def draw_image(self,stock_id,chart_title):
+    def draw_image(self,stock_id,chart_title,open,high,low,new_price):
         self.id = stock_id
         self.select_df()
+        self.insert_today_trade(open,high,low,new_price)
         stock = stock_buffer.put_stock_instance(self.id)
         self.df['dates'] = np.arange(0, len(self.df))
         self.df['5'] = self.df['close_price'].rolling(5).mean()
@@ -323,10 +336,11 @@ class main:
             print(stock.stock_name,stock.increase,stock.inform_flag)
             if stock.inform_flag:
                 dk = draw_k_line()
-                dk.draw_image(stock.stock_id,stock.chart_title)
+                dk.draw_image(stock.stock_id,stock.chart_title,stock.open_price,stock.high_price,stock.low_price,stock.new_price)
                 self.wx_send.send_message(stock.message,dk.image_path)
                 logging.debug('message:{}'.format(stock.message))
-                stock.inform_type = False
+                print('message:{}'.format(stock.message))
+                stock.inform_flag = False
                 del dk
         print('耗时：',datetime.datetime.now() - start_time)
     def run(self):
@@ -344,7 +358,7 @@ print('flag3')
 bk_buffer.init_bk_buffer()
 m = main()
 print('flag4')
-m.run_once()
+m.run()
 
 # def write_init_data():
 #     global r,db

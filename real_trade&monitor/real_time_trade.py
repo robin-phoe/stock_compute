@@ -34,7 +34,7 @@ def getOnePageStock(page):
           "f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152&_=1605597357108".format(page)
     url = "http://18.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112406268274658974922_1605597357094&pn={}" \
           "&pz=20&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:13," \
-          "m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f12&_=1605597357108".format(page)
+          "m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f12,f15,f16,f17&_=1605597357108".format(page)
     #url = 'http://18.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112406268274658974922_1605597357094&pn=2&pz=20&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:13,m:0+t:80,m:1+t:2,m:1+t:23&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152&_=1605597357108'
     #print('url:',url)
     header={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'}
@@ -52,14 +52,29 @@ def getOnePageStock(page):
         id = data['f12']
         price = data['f2']
         increase = data['f3']
+        high_price = data['f15']
+        low_price = data['f16']
+        open_price = data['f17']
         if price == '-':
             price = 0
         if increase == '-':
             increase = 0
+        if high_price == '-':
+            high_price = 0
+        if low_price == '-':
+            low_price = 0
+        if open_price == '-':
+            open_price = 0
         # r.set(id + '_price',data['f2'])
         # r.set(id + '_increase', data['f3'])
         r.lpush(id + '_price_list', price)
         r.lpush(id + '_increase_list', increase)
+        r.hset('high_price', id,high_price)
+        logging.info('high_price:{},{}'.format(id,high_price))
+        r.hset('low_price', id,low_price)
+        logging.info('low_price:{},{}'.format(id,low_price))
+        r.hset('open_price', id,open_price)
+        logging.info('open_price:{},{}'.format(id,open_price))
     #     trade_code=date_str+data['f12']
     #     print(trade_code)
     #     sql = "select h_table from stock_informations where stock_id={}".format(data['f12'])
@@ -116,9 +131,11 @@ def get_bk_info(page):
         increase = data['f3']
         if increase == '-':
             increase = 0
+
         r.hset('bk_increase', bk_id,increase)
         logging.info('bk_increase:{},{}'.format(bk_id,increase))
         print('bk_increase:{},{}'.format(bk_id,increase))
+
 """
 将键值对行情存入列表
 废弃。修改后行情直接存入列表
@@ -160,25 +177,25 @@ def run():
     # market_tranfer()
     # print('All subprocesses done.')
 if __name__ == '__main__':
-    run()
+    # run()
     # main(page=1)
-    # i=0
-    # flush_flag = 1
-    # while True:
-    #     time_now = datetime.datetime.now().strftime("%H:%M:%S")
-    #     if flush_flag ==1:
-    #         r.flushdb()
-    #         print('已清空redis')
-    #         flush_flag = 0
-    #     elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
-    #         time1 = datetime.datetime.now()
-    #         # main()
-    #         run()
-    #         time2 = datetime.datetime.now()
-    #         time_delta = time2 - time1
-    #         print('时间:',i,  time2.strftime('%H:%M:%S,%f'))
-    #         print('时间差:',time_delta)
-    #         i+=1
-    #         time.sleep(50)
-    #     time.sleep(1)
+    i=0
+    flush_flag = 1
+    while True:
+        time_now = datetime.datetime.now().strftime("%H:%M:%S")
+        if flush_flag ==1:
+            r.flushdb()
+            print('已清空redis')
+            flush_flag = 0
+        elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
+            time1 = datetime.datetime.now()
+            # main()
+            run()
+            time2 = datetime.datetime.now()
+            time_delta = time2 - time1
+            print('时间:',i,  time2.strftime('%H:%M:%S,%f'))
+            print('时间差:',time_delta)
+            i+=1
+            time.sleep(50)
+        time.sleep(1)
 
