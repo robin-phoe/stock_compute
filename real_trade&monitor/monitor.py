@@ -237,8 +237,8 @@ class wx_send_message:
         self.bot = Bot(cache_path=True)
     def send_message(self,message,image_path):
         # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
-        # my_groups = self.bot.groups().search(u'有赚就行')[0]
-        my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+        my_groups = self.bot.groups().search(u'有赚就行')[0]
+        # my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
         my_groups.send(message)
         my_groups.send_image(image_path)
         time.sleep(1)
