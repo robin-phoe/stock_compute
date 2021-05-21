@@ -10,6 +10,7 @@ import pandas as pd
 import logging
 #import threading
 import json
+import datetime
 
 logging.basicConfig(level=logging.DEBUG, filename='../stock_history_trade.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
@@ -25,20 +26,13 @@ def get_df_from_db(sql, db):
     df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
     cursor.close()
     return df
-# def select_info(db):
-#     cursor = db.cursor()
-#     sql="select stock_id from stock_informations "
-#     cursor.execute(sql)
-#     stock_id_list = cursor.fetchall()
-#     #print(stock_id_list)
-#     cursor.close()
-#     return stock_id_list
+
 def git_base_info(db):
     #清除原数据
-    sql = "delete from stock_informations"
-    cursor = db.cursor()
-    cursor.execute(sql)
-    cursor.close()
+    # sql = "delete from stock_informations"
+    # cursor = db.cursor()
+    # cursor.execute(sql)
+    # cursor.close()
     for num in range(0,1000):
         num_str = '{:0>3d}'.format(num)
         stock_id =  '600' + num_str
@@ -132,32 +126,49 @@ def get_data(stock_id,db):
 #         cursor.execute(sql)
 #     cursor.close()
 def update_other_tab(db):
-    #历史记录分表
-    for i in range(0,10):
-        h_tab_list = 'stock_history_trade'+str(i)
-    table_list = ['']
-    # table_list.extend(h_tab_list)
-    sql = "select * from stock_informations"
-    df = get_df_from_db(sql, db)
+    table_list = ['stock_trade_data',] #stock_trade_data, monitor
+    sql = "select stock_name,bk_name,stock_id from stock_informations"
     cursor = db.cursor()
-    for i in range(len(df)):
-        stock_name = df.loc[i,'stock_name']
-        bk_name = df.loc[i,'stock_name']
-        stock_id = df.loc[i, 'stock_id']
-        h_table = df.loc[i, 'h_table']
-        for tab in table_list:
-            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab,stock_name,bk_name,
-                                                                                                stock_id)
-            cursor.execute(sql)
-        #update history table
-        tab = 'stock_history_trade'+str(i)
-        sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name, bk_name,
-                                                                                            stock_id)
-        cursor.execute(sql)
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    print('查询完成。')
+    start_time = datetime.datetime.now()
+    for table in table_list:
+        try:
+            sql = "update {0} set stock_name=(%s),bk_name=(%s) where stock_id = (%s)".format(table)
+            print('sql:',sql)
+            cursor.executemany(sql,result)
+            db.commit()
+            print('储存完成。table:{}'.format(table))
+        except Exception as err:
+            db.rollback()
+            print('存储失败!table:{},{}'.format(table, err))
+            logging.error('存储失败!table:{},{}'.format(table, err))
+    print('耗时：{}'.format(datetime.datetime.now() - start_time))
+    # df = get_df_from_db(sql, db)
+    # cursor = db.cursor()
+    # for i in range(len(df)):
+    #     stock_name = df.loc[i,'stock_name']
+    #     bk_name = df.loc[i,'stock_name']
+    #     stock_id = df.loc[i, 'stock_id']
+    #     print('stock_id:{}'.format(stock_id))
+    #     for tab in table_list:
+    #         sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name,
+    #                                                                                             bk_name,
+    #                                                                                             stock_id)
+    #         cursor.execute(sql)
+    # try:
+    #
+    #     db.commit()
+    #     print('存储完成')
+    # except Exception as err:
+    #     db.rollback()
+    #     print('存储失败:id:{},{}'.format(stock_id, err))
+    #     logging.error('存储失败:id:{},{}'.format(stock_id, err))
     cursor.close()
 
 def main(update_flag = 0):
-    db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+    db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
@@ -168,8 +179,8 @@ def main(update_flag = 0):
     #     print('stock[0]:',stock[0])
     #     get_data(stock[0],db)
     if update_flag ==1:
-        update_other_tab(db)
         git_base_info(db)
+        update_other_tab(db)
     elif update_flag == 0:
         git_base_info(db)
     elif update_flag == 2:
@@ -178,6 +189,6 @@ def main(update_flag = 0):
 
 
 if __name__ == '__main__':
-    main(update_flag = 0)
+    main(update_flag = 2)
 
 
