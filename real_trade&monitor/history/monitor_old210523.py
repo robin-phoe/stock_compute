@@ -12,38 +12,25 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 import re
 
-logging.basicConfig(level=logging.DEBUG, filename='../monitor.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../../log/monitor.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
-db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
 #登录微信
 bot = Bot(cache_path=True)
 monitor_info_dict = {}
-redu_5_info_dict = {}
-redu_init_info_dict = {}
 def write_init_data():
     global r,db
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    sql  = "select max(trade_date) from com_redu"
+    sql  = "select max(trade_date) from monitor"
     cursor.execute(sql)  # 执行SQL语句
     yesterday = cursor.fetchall()[0][0].strftime("%Y-%m-%d")
     print('yesterday:',yesterday)
     # #查询需要庄线监控的信息
-    sql ="select stock_id,stock_name,zhuang_grade from com_zhuang where zhuang_grade >= 1000 and zhuang_grade <10000 " \
-         "and lasheng_flag = 0"
+    sql ="select stock_id,stock_name,grade,monitor_type from monitor where trade_date = '{}' and monitor=1 ".format(yesterday)
     cursor.execute(sql)  # 执行SQL语句
     monitor_list = cursor.fetchall()
-    ##查询热度五日线监控信息
-    sql = "select stock_id,stock_name,redu_5 from com_redu where redu_5 > 0 and trade_date = '{}'".format(yesterday)
-    cursor.execute(sql)  # 执行SQL语句
-    redu_5_list = cursor.fetchall()
-    ##监控热度init
-    sql = "select stock_id,stock_name,avg_5 from com_redu where redu_init = 1 and trade_date = '{}'".format(yesterday)
-    cursor.execute(sql)  # 执行SQL语句
-    redu_init_list = cursor.fetchall()
-    cursor.close()
-    # print('monitor_list:',monitor_list)
-    # 清空monitor_list
+    # 清空redis monitor_list
     r.ltrim('monitor_list',0,0)
     r.lpop('monitor_list')
     for stock in monitor_list:
@@ -51,26 +38,13 @@ def write_init_data():
         r.lpush('monitor_list',stock[0])
         # 写入信息字典
         monitor_info_dict[stock[0]] = stock
-    # for stock in redu_5_list:
-    #     #记录所有需要监控的id
-    #     r.lpush('monitor_list',stock[0])
-    #     redu_5_info_dict[stock[0]] = stock
-    for stock in redu_init_list:
-        #记录所有需要监控的id
-        r.lpush('monitor_list',stock[0])
-        redu_init_info_dict[stock[0]] = stock
-    # v = r.lpush('monitor_list', '000002')
-    # print('v:',v)
-    # print('monitor_info_dict:',monitor_info_dict)
     print('monitor_list_len:',len(monitor_info_dict))
-    print('redu_5_list_len:', len(redu_5_info_dict))
-    print('redu_init_list_len:', len(redu_init_info_dict))
-    # print('monitor_list:',r.lrange('monitor_list',0,r.llen('monitor_list')))
-
+    cursor.close()
 def wx_send_message(message,image_path):
     global bot
-    # my_groups = bot.groups().search(u'7个涨停翻一番')[0]
-    my_groups = bot.friends().search(u'7个涨停翻一番')[0]
+    # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
+    my_groups = bot.groups().search(u'有赚就行')[0]
+    # my_groups = bot.friends().search(u'7个涨停翻一番')[0]
     my_groups.send(message)
     my_groups.send_image(image_path)
     time.sleep(1)
@@ -117,12 +91,13 @@ def draw_k_line(id,inform_type):
     sql ="select zhuang_section,zhuang_grade from com_zhuang where stock_id = {}".format(id)
     cursor.execute(sql)
     zhuang_res= cursor.fetchall()
+    if len(zhuang_res) == 0:
+        return ''
     zhuang_section =  zhuang_res[0][0]
     zhuang_grade = zhuang_res[0][1]
     chart_title = '{0} {1} {2} {3}'.format(id, stock_name, bk_name,zhuang_grade)
-    sql = "SELECT trade_date,open_price,close_price,high_price,low_price  FROM stockdb.stock_history_trade{0} \
-            where trade_date >= '{1}' and trade_date <= '{2}' and  stock_id = '{3}'".format(h_tab, '2020-01-01', end_date,
-                                                                                            id)
+    sql = "SELECT trade_date,open_price,close_price,high_price,low_price  FROM stock_trade_data \
+            where trade_date >= '{0}' and  stock_id = '{1}' and trade_date <= '{2}' ".format('2020-01-01',id, end_date)
     df = get_df_from_db(sql)
     cursor.close()
     df['5'] = df['close_price'].rolling(5).mean()
@@ -156,23 +131,19 @@ def draw_k_line(id,inform_type):
         print('indexs:',sta,end )
         plt.plot(df['dates'][sta:end], df['5'][sta:end] ,color='green')
     plt.legend();
-    image_path ='./pic/{0}{1}{2}{3}.jpg'.format(id,stock_name,end_date,inform_type)
+    image_path ='../pic/{0}{1}{2}{3}.jpg'.format(id,stock_name,end_date,inform_type)
     plt.savefig(image_path)
     message = '{0} {1} {2} ! zhuang_grade:{3}。涨幅：'.format(id,stock_name,inform_type,zhuang_grade)
     return message, image_path
-
-def monitor_core_increase(monitor_type,id):
+def monitor_core_increase(id):
     increase = r.lindex(id+'_increase_list',0)
     if increase == None or increase == '-':
         return
     inform_type = ''
-    if monitor_type == 'zhuang':
-        grade = monitor_info_dict[id][2]
-        stock_name= monitor_info_dict[id][1]
-    elif monitor_type == 'redu_5':
-        grade = redu_5_info_dict[id][2]
-        stock_name = redu_5_info_dict[id][1]
-    if monitor_type in ('zhuang','redu_5') :
+    grade = monitor_info_dict[id][2]
+    stock_name= monitor_info_dict[id][1]
+    monitor_type = monitor_info_dict[id][3]
+    if monitor_type in ('zhuang','remen_xiaoboxin') :
         if increase != '-' and increase != None and float(increase) >= 5:
             if r.get(id + monitor_type + '_flag_5') != '1' :
                 print('flag_3:',r.get(id + monitor_type + '_flag_5'))
@@ -183,7 +154,7 @@ def monitor_core_increase(monitor_type,id):
                 inform_type = monitor_type + '_inc_5'
             else:
                 return
-        elif increase != '-' and increase != None and float(increase) >= 3:
+        elif increase != '-' and increase != None and float(increase) >= 2.5:
             if r.get(id + monitor_type + '_flag_2') != '1' :
                 print('flag_2:',r.get(id + monitor_type + '_flag_2'))
                 # print(id,'增长超过%3!：',increase)
@@ -195,47 +166,19 @@ def monitor_core_increase(monitor_type,id):
                 return
         else:
             return
-    # elif monitor_type == 'redu_init' :
-    #     # print('redu_init_info_dict:',redu_init_info_dict)
-    #     avg_5 = redu_init_info_dict[id][2]
-    #     last_price = r.lindex(id+'_price_list',0)
-    #     if  last_price != '-' and last_price != None and float(last_price) <= avg_5:
-    #         if r.get(id + monitor_type + '_flag_y5') != '1' :
-    #             print('flag_y5:',r.get(id + monitor_type + '_flag_y5'))
-    #             # print(id,'增长超过%3!：',increase)
-    #             print('time:',datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    #             print('{0},{1} redu_init flag_y5! increase:{2} '.format(id,redu_init_info_dict[id][1],increase))
-    #             r.set(id + monitor_type + '_flag_y5','1')
-    #             inform_type = monitor_type + '_inc_y5'
-    #         else:
-    #             return
-    #     # elif increase != '-' and increase != None and float(increase) <= 0:
-    #     #     if r.get(id + monitor_type + '_flag_0') != '1' :
-    #     #         print('flag_0:',r.get(id + monitor_type + '_flag_0'))
-    #     #         # print(id,'增长超过%3!：',increase)
-    #     #         print('time:',datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    #     #         print('{0},{1} redu_init 涨幅为0!：{2} '.format(id,redu_init_info_dict[id][1],increase))
-    #     #         r.set(id + monitor_type + '_flag_0','1')
-    #     #         inform_type = monitor_type + '_inc_0'
-    #     #     else:
-    #     #         return
-    #     else:
-    #         return
 
     else:
         return
     #wx send
+    if draw_k_line(id,inform_type) == '':
+        return
     message, image_path = draw_k_line(id,inform_type)
     message = monitor_type +':'+ message + increase
     wx_send_message(message, image_path)
 def monitor_main():
     monitor_list = r.lrange('monitor_list',0,-1)
     for id in monitor_info_dict:
-        monitor_core_increase('zhuang',id)
-    for id in redu_5_info_dict:
-        monitor_core_increase('redu_5',id)
-    # for id in redu_init_info_dict:
-    #     monitor_core_increase('redu_init', id)
+        monitor_core_increase(id)
 def test_redis():
     # r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
     # v = r.lpush('Zarten1', 1, 2, 3, 4, 5)
