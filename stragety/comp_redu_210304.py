@@ -39,10 +39,10 @@ def get_df_from_db(sql, db):
 def com_redu1(db,date,delta = 30):
     end_date = datetime.datetime.strptime(date, "%Y-%m-%d")
     start_date = (end_date - datetime.timedelta(days=delta)).strftime("%Y-%m-%d")
-    sql = "select L.stock_code,count(L.jmrate)*10000 as longhu_count from longhu_info L " \
+    sql = "select L.stock_id,count(L.jmrate)*10000 as longhu_count from longhu_info L " \
           "where  " \
           "trade_date >= '{0}' and trade_date <= '{1}'and reson not like '退市%' " \
-          "group by stock_code".format(start_date,date)
+          "group by stock_id".format(start_date,date)
     longhu_df = get_df_from_db(sql, db)
     return longhu_df
 #计算涨停热度
