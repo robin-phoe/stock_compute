@@ -90,14 +90,20 @@ class stock:
     def compute_monitor(self):
         if self.monitor != 1:
             return
-        if self.increase >= 5 and self.monitor_inc5_flag == 'True':
-            self.inform_type = '涨幅超过5%'
-            self.monitor_inc5_flag = False
-            r.hset('monitor_flag', '{}_inc5_flag'.format(self.stock_id),'False')
-        elif self.increase >= 2.5 and self.monitor_inc3_flag == 'True':
-            self.inform_type = '涨幅超过2.5%'
-            self.monitor_inc3_flag = False
-            r.hset('monitor_flag', '{}_inc3_flag'.format(self.stock_id), 'False')
+        if self.increase >= 5:
+            if self.monitor_inc5_flag == 'True':
+                self.inform_type = '涨幅超过5%'
+                self.monitor_inc5_flag = False
+                r.hset('monitor_flag', '{}_inc5_flag'.format(self.stock_id),'False')
+            else:
+                return
+        elif self.increase >= 2.5:
+            if self.monitor_inc3_flag == 'True':
+                self.inform_type = '涨幅超过2.5%'
+                self.monitor_inc3_flag = False
+                r.hset('monitor_flag', '{}_inc3_flag'.format(self.stock_id), 'False')
+            else:
+                return
         else:
             self.modify_flag = False
             return
