@@ -31,6 +31,7 @@ class creat_df_from_db:
         if 'trade_date' in df.columns:
             df = df.sort_values(axis=0, ascending=False, by='trade_date', na_position='last')
             df.reset_index(inplace=True)
+            df['trade_date'] = df['trade_date'].apply(lambda x:x.strftime("%Y-%m-%d"))
         cursor.close()
         # print('df:',df)
         return df
@@ -39,11 +40,12 @@ class save:
         self.db = db
         self.cursor = db.cursor()
     def add_stock(self,id,boxin_list):
-        boxin_list = str(boxin_list)
-        sql = "insert into boxin_list(stock_id,boxin_list) \
-            values('{0}','{1}') " \
-              "ON DUPLICATE KEY UPDATE stock_id='{0}',boxin_list='{1}' " \
-              "".format(id,boxin_list)
+        boxin_list = str(boxin_list).replace('\'','"')
+        sql = 'insert into boxin_list(stock_id,boxin_list) ' \
+              'values(\'{0}\',\'{1}\') ' \
+              'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
+              ''.format(id,boxin_list)
+        print('sql:',sql)
         self.cursor.execute(sql)
     def commit(self):
         try:
@@ -54,7 +56,7 @@ class save:
             db.rollback()
             print('存储失败:', err)
             logging.error('存储失败:{}'.format(err))
-        cursor.close()
+        self.cursor.close()
 class point:
     def __init__(self,type,date,high_price,low_price):
         self.date = date
@@ -150,14 +152,15 @@ class history:
     def select_df(self):
         cf = creat_df_from_db()
         sql = "select stock_id,stock_name,trade_date,high_price,low_price from stock_trade_data " \
-              "where trade_date >= '2020-01-01' "
+              "where trade_date >= '2020-01-01' )"
         self.df = cf.creat_df(sql)
     def core(self):
         self.select_df()
         # print('stock_id:',self.df['stock_id'].tolist())
         self.id_set = set(self.df['stock_id'].tolist())
+        s = save(db)
+        start = datetime.datetime.now()
         for stock_id in self.id_set:
-            start = datetime.datetime.now()
             print('id:',stock_id)
             cp = com_point(stock_id)
             single_df = self.df[self.df['stock_id'] == stock_id]
@@ -167,7 +170,10 @@ class history:
                 cp.enter_new_point(single_df.loc[i, 'trade_date'], single_df.loc[i, 'high_price'],
                                    single_df.loc[i, 'low_price'], )
             print(cp.res_list)
-            print('耗时：',datetime.datetime.now() - start)
+            s.add_stock(stock_id,cp.res_list)
+        s.commit()
+        print('耗时：',datetime.datetime.now() - start)
+
 if __name__ == '__main__':
     db_config = read_config('db_config')
     db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
