@@ -152,7 +152,7 @@ class history:
     def select_df(self):
         cf = creat_df_from_db()
         sql = "select stock_id,stock_name,trade_date,high_price,low_price from stock_trade_data " \
-              "where trade_date >= '2020-01-01' )"
+              "where trade_date >= '2020-01-01' "
         self.df = cf.creat_df(sql)
     def core(self):
         self.select_df()
