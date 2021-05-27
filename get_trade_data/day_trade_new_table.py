@@ -21,7 +21,7 @@ cursor = db.cursor()
 count=0
 
 #获取单个页面股票数据
-def getOnePageStock(page):
+def getOnePageStock(page,date_str):
     global count
     url = "http://18.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112406268274658974922_1605597357094&pn={}" \
           "&pz=20&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&fs=m:0+t:6,m:0+t:13," \
@@ -38,7 +38,7 @@ def getOnePageStock(page):
         return 0
     else:
         Data_json = json.loads(result[0])
-    date_str = datetime.datetime.now().strftime('%Y%m%d')
+
     print('date_str:',date_str)
     for data in Data_json:
         print('data:',data)
@@ -65,13 +65,16 @@ def getOnePageStock(page):
                 logging.error('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
                 print('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
     return 1
-def main():
+def main(date):
+    if date == None:
+        date = datetime.datetime.now().strftime('%Y%m%d')
     flag = 1
     page = 1
     while flag:
-        flag = getOnePageStock(str(page))
+        flag = getOnePageStock(str(page),date)
         page = int(page) + 1
 if __name__ == '__main__':
-    main()
+    date = '20210528'#None#'%Y%m%d'
+    main(date)
     print('completed!')
 
