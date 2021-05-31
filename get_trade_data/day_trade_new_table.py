@@ -74,7 +74,7 @@ def main(date):
         flag = getOnePageStock(str(page),date)
         page = int(page) + 1
 if __name__ == '__main__':
-    date = '20210528'#None#'%Y%m%d'
+    date = None#'%Y%m%d'
     main(date)
     print('completed!')
 
