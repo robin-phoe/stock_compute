@@ -122,12 +122,15 @@ class com_point:
             delta = self.dynamic_point2.high_price / self.dynamic_point1.low_price
         if delta < self.delta_satndard:
             return
+        #条件成立，记录数据
         else:
             if self.confirm_point != '':
                 if self.confirm_point.type:
-                    self.res_list.append(( self.dynamic_point1.date, self.confirm_point.date)) #(低、高)
+                    self.res_list.append(((self.dynamic_point1.date,self.dynamic_point1.low_price),
+                                          (self.confirm_point.date,self.confirm_point.high_price))) #(低、高)
                 else:
-                    self.res_list.append((self.confirm_point.date, self.dynamic_point1.date))  # (低、高)
+                    self.res_list.append(((self.confirm_point.date,self.confirm_point.low_price),
+                                          (self.dynamic_point1.date,self.dynamic_point1.high_price)))  # (低、高)
             self.confirm_point = deepcopy(self.dynamic_point1)
             self.dynamic_point1 = deepcopy(self.dynamic_point2)
             self.dynamic_point2.type = not self.dynamic_point1.type
