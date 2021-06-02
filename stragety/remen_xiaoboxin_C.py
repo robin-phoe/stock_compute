@@ -1,16 +1,4 @@
 # coding:utf-8
-#这是热门小波形的B方案，筛选出热门的个股，监控波动中的小回调再拉升的空间
-# 思路是通过比较广的入门条件（热门），最后通过分数和启动条件来把控。（实践中来进一步缩小精确条件筛选）
-#热门条件：进20日换手日均大于3%
-#分数因素：
-#一、5日线：当时值小于5日线为 +分数（固定分数10000）
-#二、换手率
-#三、左侧走势 60日均线 近20日差为正，且20均线20日差为正（固定分数10000），正：>=0.97
-#四、换手率
-#五、振荡波形--偏离度 当前价与20日均线偏差值（分数为二次拱形函数）
-#六、须是凹谷形，即当前显现凹谷左侧形态，捕捉右侧回升机会
-#目前不包含688
-
 # import tushare as ts
 import pandas as pd
 import pymysql
@@ -25,6 +13,8 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
+import pub_uti
+
 
 #显示所有列
 pd.set_option('display.max_columns', None)
@@ -33,22 +23,57 @@ pd.set_option('display.max_rows', None)
 
 logging.basicConfig(level=logging.DEBUG, filename='../log/remen_xiaoboxin_B.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
-def get_df_from_db(sql, db):
-    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    cursor.execute(sql)  # 执行SQL语句
-    data = cursor.fetchall()
-    # 下面为将获取的数据转化为dataframe格式
-    columnDes = cursor.description  # 获取连接对象的描述信息
-    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
-    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
-    # df = df.set_index(keys=['trade_date'])
-    # df = df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last')
-    # df.reset_index(inplace=True)
-    cursor.close()
-    # print('df:',df)
-    # df['trade_date'] = date2num(df['trade_date'])
-    # print('df:', df[['avg_10', 'close_price']])
-    return df
+class stock:
+    def __init__(self,id,name,ponit_json,close_price):
+        pass
+
+'''
+计算最后日情况
+一期：计算最后低点后3%以内情况
+二期：增加高点3个点一下回调情况（前期高热）
+三期：增加点后多日形态筛选
+四期：分离尾盘入场类（圆滑跌后收稳）
+'''
+class core:
+    def __init__(self,date = None):
+        self.df = self.select_df()
+        if date == None:
+            sql = "select max(date) from stock_trade_data"
+            self.date = pub_uti.select_from_db(sql=sql)[0][0]
+    def select_df(self):
+        sql = "SELECT * FROM boxin_data B " \
+              " LEFT JOIN " \
+              " (select stock_id,stock_name,close_price from stock_trade_data where trade_date = '{0}') T " \
+              " ON B.stock_id = T.stock_id ".format(self.date)
+        self.df = pub_uti.creat_df(sql=sql)
+        return self.df
+    def run_apply(self):
+        self.df['boxin_json'] = ''
+        self.df['grade'] = ''
+        self.df = self.df.apply(fun_main,asxi = 1)
+    #apply函数汇总入口
+    def fun_main(self,raw):
+        point_json = raw['boxin_json'] = json.loads(raw['boxin_list'])
+        if not self.jugement_last_point(point_json):
+            raw['grade'] =
+            return raw
+
+    #判断最后点是否为低点
+    def jugement_last_point(self,point_json):
+        #取最后一组tuple
+        point_tuple = point_json[0]
+        first_point = point_tuple[0][0]
+        second_point = point_tuple[1][0]
+        if first_point > second_point:
+            return True
+        else:
+            return False
+
+
+
+'''
+计算历史指定日期情况（用于验证）
+'''
 #判断凹谷左侧
 #单日increase<3%
 #累计下跌幅度>-6%
