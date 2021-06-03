@@ -5,6 +5,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
+import logging
 """
 【功能】创建db
 """
@@ -56,3 +57,27 @@ class select_db:
         return data
 s_d = select_db()
 select_from_db = s_d.select_from_db
+"""
+【功能】存储功能
+"""
+class save:
+    def __init__(self):
+        cd = con_db()
+        self.db = cd.creat_db()
+        self.cursor = self.db.cursor()
+    def add_sql(self,sql):
+        # sql = 'insert into boxin_list(stock_id,boxin_list) ' \
+              # 'values(\'{0}\',\'{1}\') ' \
+              # 'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
+              # ''.format(id,boxin_list)
+        self.cursor.execute(sql)
+    def commit(self):
+        try:
+            self.db.commit()
+            print('存储完成')
+            logging.info('存储完成')
+        except Exception as err:
+            self.db.rollback()
+            print('存储失败:', err)
+            logging.error('存储失败:{}'.format(err))
+        self.cursor.close()

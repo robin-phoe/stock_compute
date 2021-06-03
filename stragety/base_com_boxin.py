@@ -49,11 +49,11 @@ class save:
         self.cursor.execute(sql)
     def commit(self):
         try:
-            db.commit()
+            self.db.commit()
             print('存储完成')
             logging.info('存储完成')
         except Exception as err:
-            db.rollback()
+            self.db.rollback()
             print('存储失败:', err)
             logging.error('存储失败:{}'.format(err))
         self.cursor.close()
@@ -82,7 +82,7 @@ class com_point:
         self.dynamic_point1 = ''
         self.dynamic_point2 = ''
         self.confirm_point = ''
-        self.delta_satndard = 1.05
+        self.delta_standard = 1.05
         self.res_list = []
     def enter_new_point(self,date,high_price,low_price):
         self.new_point = point(type=False, date=date, high_price=high_price,low_price=low_price)
@@ -120,7 +120,7 @@ class com_point:
             delta = self.dynamic_point1.high_price / self.dynamic_point2.low_price
         else:
             delta = self.dynamic_point2.high_price / self.dynamic_point1.low_price
-        if delta < self.delta_satndard:
+        if delta < self.delta_standard:
             return
         #条件成立，记录数据
         else:
