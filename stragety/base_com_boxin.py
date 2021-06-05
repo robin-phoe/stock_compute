@@ -41,7 +41,7 @@ class save:
         self.cursor = db.cursor()
     def add_stock(self,id,boxin_list):
         boxin_list = str(boxin_list).replace('\'','"')
-        sql = 'insert into boxin_list(stock_id,boxin_list) ' \
+        sql = 'insert into boxin_data(stock_id,boxin_list) ' \
               'values(\'{0}\',\'{1}\') ' \
               'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
               ''.format(id,boxin_list)
