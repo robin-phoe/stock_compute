@@ -9,10 +9,12 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 from copy import deepcopy
 import re
+import pub_uti
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
+
 
 logging.basicConfig(level=logging.DEBUG, filename='../log/base_com.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
@@ -35,28 +37,28 @@ class creat_df_from_db:
         cursor.close()
         # print('df:',df)
         return df
-class save:
-    def __init__(self,db):
-        self.db = db
-        self.cursor = db.cursor()
-    def add_stock(self,id,boxin_list):
-        boxin_list = str(boxin_list).replace('\'','"')
-        sql = 'insert into boxin_data(stock_id,boxin_list) ' \
-              'values(\'{0}\',\'{1}\') ' \
-              'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
-              ''.format(id,boxin_list)
-        print('sql:',sql)
-        self.cursor.execute(sql)
-    def commit(self):
-        try:
-            self.db.commit()
-            print('存储完成')
-            logging.info('存储完成')
-        except Exception as err:
-            self.db.rollback()
-            print('存储失败:', err)
-            logging.error('存储失败:{}'.format(err))
-        self.cursor.close()
+# class save:
+#     def __init__(self,db):
+#         self.db = db
+#         self.cursor = db.cursor()
+#     def add_stock(self,id,boxin_list):
+#         boxin_list = str(boxin_list).replace('\'','"')
+#         sql = 'insert into boxin_data(stock_id,boxin_list) ' \
+#               'values(\'{0}\',\'{1}\') ' \
+#               'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
+#               ''.format(id,boxin_list)
+#         print('sql:',sql)
+#         self.cursor.execute(sql)
+#     def commit(self):
+#         try:
+#             self.db.commit()
+#             print('存储完成')
+#             logging.info('存储完成')
+#         except Exception as err:
+#             self.db.rollback()
+#             print('存储失败:', err)
+#             logging.error('存储失败:{}'.format(err))
+#         self.cursor.close()
 class point:
     def __init__(self,type,date,high_price,low_price):
         self.date = date
@@ -84,7 +86,9 @@ class com_point:
         self.confirm_point = ''
         self.delta_standard = 1.05
         self.res_list = []
+        self.save_sql = ''
     def enter_new_point(self,date,high_price,low_price):
+        self.save_sql = ''
         self.new_point = point(type=False, date=date, high_price=high_price,low_price=low_price)
         if self.dynamic_point1 == '':
             self.dynamic_point1 = deepcopy(self.new_point)
@@ -128,12 +132,23 @@ class com_point:
                 if self.confirm_point.type:
                     self.res_list.append(((self.dynamic_point1.date,self.dynamic_point1.low_price),
                                           (self.confirm_point.date,self.confirm_point.high_price))) #(低、高)
+                    self.save(self.dynamic_point1.low_price, self.dynamic_point1.date,'l')
                 else:
                     self.res_list.append(((self.confirm_point.date,self.confirm_point.low_price),
                                           (self.dynamic_point1.date,self.dynamic_point1.high_price)))  # (低、高)
+                    self.save(self.dynamic_point1.high_price, self.dynamic_point1.date,'h')
+            else:
+                if self.dynamic_point1.type:
+                    self.save(self.dynamic_point1.high_price,self.dynamic_point1.date,'h')
+                else:
+                    self.save(self.dynamic_point1.low_price, self.dynamic_point1.date,'l')
             self.confirm_point = deepcopy(self.dynamic_point1)
             self.dynamic_point1 = deepcopy(self.dynamic_point2)
             self.dynamic_point2.type = not self.dynamic_point1.type
+    def save(self,price,date,point_type):
+        self.save_sql = "update stock_trade_data set wave_data = '{0}',point_type = '{3}' " \
+                        "where trade_date = '{1}' and stock_id = '{2}'".format(price,date,self.id,point_type)
+
 class main:
     def __init__(self):
         self.df = ''
@@ -161,7 +176,8 @@ class history:
         self.select_df()
         # print('stock_id:',self.df['stock_id'].tolist())
         self.id_set = set(self.df['stock_id'].tolist())
-        s = save(db)
+        save_wave = pub_uti.save()
+        save_trade = pub_uti.save()
         start = datetime.datetime.now()
         for stock_id in self.id_set:
             print('id:',stock_id)
@@ -172,9 +188,17 @@ class history:
             for i in range(len(single_df)):
                 cp.enter_new_point(single_df.loc[i, 'trade_date'], single_df.loc[i, 'high_price'],
                                    single_df.loc[i, 'low_price'], )
+                if cp.save_sql != '':
+                    save_trade.add_sql(cp.save_sql)
             print(cp.res_list)
-            s.add_stock(stock_id,cp.res_list)
-        s.commit()
+            boxin_list = str(cp.res_list).replace('\'', '"')
+            wave_sql = 'insert into boxin_data(stock_id,boxin_list) ' \
+                  'values(\'{0}\',\'{1}\') ' \
+                  'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
+                  ''.format(id, boxin_list)
+            save_wave.add_sql(wave_sql)
+        save_wave.commit()
+        save_trade.commit()
         print('耗时：',datetime.datetime.now() - start)
 
 if __name__ == '__main__':
