@@ -32,119 +32,108 @@ logging.basicConfig(level=logging.DEBUG, filename='../log/remen_xiaoboxin_B.log'
 四期：分离尾盘入场类（圆滑跌后收稳）
 '''
 class stock:
-    def __init__(self,id,name,date,ponit_json,close_price):
+    def __init__(self,id,date,single_df):
         self.id = id
-        self.name = name
-        self.point_json = ponit_json
-        self.close_price = close_price #list
+        self.single_df = single_df #时间倒序
+        self.date = date
         self.grade = 0
         self.point_tuple = ()
         self.low_standard = 1.03
         self.wave_long = 35
         self.range_day = 3
-        self.com_date = date #'2021-06-10'
+        self.last_point_index = ''
+        self.last_point_value = 0
+        self.trade_code = re.sub('-', '', self.date) + self.id
 
     def compute(self):
         if not self.jugement_last_point():
-            return
-        if not self.jugement_Within_range():
             return
         if not self.jugement_increase_after_point():
             return
         if not self.jugement_wave_acount():
             return
-        self.grade = 10000
-    # 判断最后点是否为低点
+        self.grade = 10001
+    # 判断最后点是否为低点 & 点是否在 时间范围内
     def jugement_last_point(self):
         # 取最后一组tuple
-        self.point_tuple = self.point_json[0]
-        first_point = self.point_tuple[0][0]
-        second_point = self.point_tuple[1][0]
-        if first_point > second_point:
-            print('低点')
-            return True
-        else:
-            print('高点')
+        if len(self.single_df) <= self.range_day:
             return False
+        for i in range(self.range_day):
+            point_type = self.single_df.loc[i,'point_type']
+            if point_type == 'l':
+                self.last_point_index = i
+                self.last_point_value = self.single_df.loc[i,'wave_data']
+                return True
+            elif point_type == 'h':
+                return False
+        return False
     #判断在低点3%以内
     def jugement_increase_after_point(self):
-        if self.point_tuple[0][1] / self.close_price[0] < self.low_standard:
+        price_rate = self.single_df.loc[0,'close_price'] / self.last_point_value #长下影线会被排除
+        if price_rate < self.low_standard:
             print('在低点3%以内')
             return True
         else:
             print('不在低点3%以内！')
             return False
-    def jugement_Within_range(self):
-        last_point_date = self.point_json[0][0][0]
-        range_day = (datetime.datetime.strptime(self.com_date, '%Y-%m-%d') - datetime.datetime.strptime(last_point_date, '%Y-%m-%d')).days
-        print('range_day:',range_day)
-        if range_day > self.range_day:
-            return False
-        return True
-    #判断30个自然日内应该有三个以上的tuple（1.5个组波形）
+    #判断20个交易日内应该有三个以上的tuple（1.5个组波形）
     def jugement_wave_acount(self):
-        if len(self.point_json) < 4:
+        if len(self.single_df) < 20:
             print('point_json长度小于4')
             return False
-        #如果最后是低点
-        first_date = self.point_json[3][0][0]
-        second_date = self.point_json[0][0][0]
-        time_delta = datetime.datetime.strptime(second_date,'%Y-%m-%d') - datetime.datetime.strptime(first_date,'%Y-%m-%d')
-        #如果最后是高点
-        #pass
-        delta_day = time_delta.days
-        if delta_day > self.wave_long:
-            print('{} 波形长度超过{}，长度为{}。'.format(self.name,self.wave_long,delta_day))
-            logging.info('{} 波形长度超过{}，长度为{}。'.format(self.name,self.wave_long,delta_day))
-            return False
-        else:
+        type_list = self.single_df['point_type'][0:20].tolist()
+        l_count = type_list.count('l')
+        h_count = type_list.count('h')
+        if l_count >= 3 or h_count >= 3:
             print('波形符合')
             return True
-
+        else:
+            return False
 
 class stock_buffer:
     def __init__(self,date = None):
         self.stock_buffer = {}
-        self.wave_df = ''
         self.trade_df = ''
-        self.df = ''
-        if date == None:
-            sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data"
-            self.date = pub_uti.select_from_db(sql=sql)[0][0]
-        else:
-            self.date = date
+        self.date = date
+        self.sql_range_day = 90
+        self.sql_start_date = ''#'2021-06-10'
+        self.id_set = set()
         #trade_data区间开始的时间
     def init_buffer(self):
-        self.select_df()
+        self.creat_time()
+        self.select_info()
         self.save = pub_uti.save()
-        self.df.apply(self.init_stock,axis = 1)
+        for id in self.id_set:
+            self.init_stock(id)
         self.save.commit()
-    def select_df(self):
-        wave_sql = "select * FROM boxin_data "
-        self.wave_df = pub_uti.creat_df(sql=wave_sql)
-        trade_sql = "select stock_id,stock_name,close_price,trade_date FROM stock_trade_data where trade_date = '{}'".format(self.date)
+    def creat_time(self):
+        if self.date == None:
+            sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
+            self.date = pub_uti.select_from_db(sql=sql)[0][0]
+        self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
+                               datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
+    def select_info(self):
+        trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' ".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
-        self.df = pd.merge(self.trade_df,self.wave_df,on='stock_id',how='left')
-        self.df.fillna('',inplace=True)
+        self.trade_df.fillna('',inplace=True)
+        self.id_set = set(self.trade_df['stock_id'].tolist())
         # print(self.df.columns)
-    def init_stock(self,raw):
-        # print('raw:',raw['boxin_list'],type(raw['boxin_list']))
-        if raw['boxin_list'] == '' or raw['boxin_list'] == '[]':
+    def init_stock(self,id):
+        single_df = self.trade_df.loc[self.trade_df.stock_id == id]
+        single_df.reset_index(inplace=True)
+        if len(single_df) < 20 :
             return
-        wave_list_str = raw['boxin_list']
-        wave_list_str = re.sub("\(","[",wave_list_str)
-        wave_list_str = re.sub("\)", "]", wave_list_str)
-        point_json = json.loads(wave_list_str)
-        close_price = [raw['close_price']]
-        trade_code = re.sub('-', '', self.date) + raw['stock_id']
-        self.stock_buffer[trade_code] = stock_object = stock(raw['stock_id'],raw['stock_name'],self.date,point_json,close_price)
+        stock_name = single_df.loc[0,'stock_id']
+        self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
         stock_object.compute()
         sql = "insert into remen_xiaoboxin_c(trade_code,stock_id,stock_name,trade_date,grade) " \
               "values('{0}','{1}','{2}','{3}','{4}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}' " \
-              "".format(trade_code,raw['stock_id'],raw['stock_name'],self.date,stock_object.grade)
-        print(raw['stock_id'], raw['stock_name'], stock_object.grade)
+              "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade)
+        print(stock_name,id, stock_object.grade)
         self.save.add_sql(sql)
     def get_stock(self,id):
         pass
