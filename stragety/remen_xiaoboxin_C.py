@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.DEBUG, filename='../log/remen_xiaoboxin_B.log'
 四期：分离尾盘入场类（圆滑跌后收稳）
 '''
 class stock:
-    def __init__(self,id,name,date,ponit_json,close_price):
+    def __init__(self,id,name,ponit_json,close_price):
         self.id = id
         self.name = name
         self.point_json = ponit_json
@@ -41,13 +41,9 @@ class stock:
         self.point_tuple = ()
         self.low_standard = 1.03
         self.wave_long = 35
-        self.range_day = 3
-        self.com_date = date #'2021-06-10'
 
     def compute(self):
         if not self.jugement_last_point():
-            return
-        if not self.jugement_Within_range():
             return
         if not self.jugement_increase_after_point():
             return
@@ -74,13 +70,6 @@ class stock:
         else:
             print('不在低点3%以内！')
             return False
-    def jugement_Within_range(self):
-        last_point_date = self.point_json[0][0][0]
-        range_day = (datetime.datetime.strptime(self.com_date, '%Y-%m-%d') - datetime.datetime.strptime(last_point_date, '%Y-%m-%d')).days
-        print('range_day:',range_day)
-        if range_day > self.range_day:
-            return False
-        return True
     #判断30个自然日内应该有三个以上的tuple（1.5个组波形）
     def jugement_wave_acount(self):
         if len(self.point_json) < 4:
@@ -138,7 +127,7 @@ class stock_buffer:
         point_json = json.loads(wave_list_str)
         close_price = [raw['close_price']]
         trade_code = re.sub('-', '', self.date) + raw['stock_id']
-        self.stock_buffer[trade_code] = stock_object = stock(raw['stock_id'],raw['stock_name'],self.date,point_json,close_price)
+        self.stock_buffer[trade_code] = stock_object = stock(raw['stock_id'],raw['stock_name'],point_json,close_price)
         stock_object.compute()
         sql = "insert into remen_xiaoboxin_c(trade_code,stock_id,stock_name,trade_date,grade) " \
               "values('{0}','{1}','{2}','{3}','{4}') " \

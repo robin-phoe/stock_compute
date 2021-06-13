@@ -139,9 +139,9 @@ class com_point:
                     self.save(self.dynamic_point1.high_price, self.dynamic_point1.date,'h')
             else:
                 if self.dynamic_point1.type:
-                    self.save(self.dynamic_point1.high_price,self.dynamic_point1.date,'l')
+                    self.save(self.dynamic_point1.high_price,self.dynamic_point1.date,'h')
                 else:
-                    self.save(self.dynamic_point1.low_price, self.dynamic_point1.date,'h')
+                    self.save(self.dynamic_point1.low_price, self.dynamic_point1.date,'l')
             self.confirm_point = deepcopy(self.dynamic_point1)
             self.dynamic_point1 = deepcopy(self.dynamic_point2)
             self.dynamic_point2.type = not self.dynamic_point1.type
