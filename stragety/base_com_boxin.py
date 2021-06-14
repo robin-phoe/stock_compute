@@ -60,14 +60,20 @@ class creat_df_from_db:
 #             logging.error('存储失败:{}'.format(err))
 #         self.cursor.close()
 class point:
-    def __init__(self,type,date,high_price,low_price):
+    def __init__(self,type,date,open_price,close_price,high_price,low_price):
         self.date = date
         self.type = type #True：高点，False:低点
         self.high_price = high_price
         self.low_price = low_price
         self.use_price = 0
-        self.open_price = 0
-        self.close_price = 0
+        self.open_price = open_price
+        self.close_price = close_price
+        if self.open_price >= self.close_price:
+            self.big_price = self.open_price
+            self.small_price = self.close_price
+        else:
+            self.big_price = self.close_price
+            self.small_price = self.open_price
         # self.com_use_price()
     # def com_use_price(self):
     #     if self.type == 'high':
@@ -87,9 +93,9 @@ class com_point:
         self.delta_standard = 1.05
         self.res_list = []
         self.save_sql = ''
-    def enter_new_point(self,date,high_price,low_price):
+    def enter_new_point(self,date,high_price,low_price,open_price,close_price):
         self.save_sql = ''
-        self.new_point = point(type=False, date=date, high_price=high_price,low_price=low_price)
+        self.new_point = point(type=False, date=date, high_price=high_price,low_price=low_price,open_price = open_price,close_price = close_price)
         if self.dynamic_point1 == '':
             self.dynamic_point1 = deepcopy(self.new_point)
             self.dynamic_point2 = deepcopy(self.new_point)
@@ -121,9 +127,9 @@ class com_point:
         if self.dynamic_point1.date == self.dynamic_point2.date:
             return
         if self.dynamic_point1.type :
-            delta = self.dynamic_point1.high_price / self.dynamic_point2.low_price
+            delta = self.dynamic_point1.big_price / self.dynamic_point2.small_price
         else:
-            delta = self.dynamic_point2.high_price / self.dynamic_point1.low_price
+            delta = self.dynamic_point2.big_price / self.dynamic_point1.small_price
         if delta < self.delta_standard:
             return
         #条件成立，记录数据
@@ -164,13 +170,18 @@ class main:
             cp.enter_new_point(self.df.loc[i,'trade_date'],self.df.loc[i,'high_price'],self.df.loc[i,'low_price'],)
         # print(cp.res_list)
 class history:
-    def __init__(self):
+    def __init__(self,table=None):
         self.df = ''
         self.id_set = set()
+        self.sto_tab = table
     def select_df(self):
         cf = creat_df_from_db()
-        sql = "select stock_id,stock_name,trade_date,high_price,low_price from stock_trade_data " \
-              "where trade_date >= '2020-01-01' "
+        if self.sto_tab != None:
+            sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
+                  "where trade_date >= '2020-01-01' and stock_id like '%{}'".format(self.sto_tab)
+        else:
+            sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
+                  "where trade_date >= '2020-01-01' "
         self.df = cf.creat_df(sql)
     def core(self):
         self.select_df()
@@ -187,7 +198,7 @@ class history:
             # print('len_df:',len(single_df),single_df.index)
             for i in range(len(single_df)):
                 cp.enter_new_point(single_df.loc[i, 'trade_date'], single_df.loc[i, 'high_price'],
-                                   single_df.loc[i, 'low_price'], )
+                                   single_df.loc[i, 'low_price'],single_df.loc[i, 'open_price'],single_df.loc[i, 'close_price'] )
                 if cp.save_sql != '':
                     save_trade.add_sql(cp.save_sql)
             print(cp.res_list)
@@ -200,11 +211,22 @@ class history:
         save_wave.commit()
         save_trade.commit()
         print('耗时：',datetime.datetime.now() - start)
-
+def run():
+    p = Pool(8)
+    for i in range(0, 10):
+        his = history(str(i))
+        p.apply_async(his.core())
+    #    p.apply_async(main, args=('1',date,))
+    print('Waiting for all subprocesses done...')
+    p.close()
+    p.join()
+    print('All subprocesses done.')
 if __name__ == '__main__':
     db_config = read_config('db_config')
     db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
     # m = main()
     # m.compute()
+
     h = history()
     h.core()
+    # run()
