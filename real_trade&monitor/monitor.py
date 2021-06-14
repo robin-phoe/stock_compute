@@ -245,10 +245,13 @@ class bk_buffer:
 class wx_send_message:
     def __init__(self):
         self.bot = Bot(cache_path=True)
-    def send_message(self,message,image_path):
+    def send_message(self,message,image_path,monitor_type):
         # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
-        # my_groups = self.bot.groups().search(u'有赚就行')[0]
-        my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+        if monitor_type in ['remen_xiaoboxin_c',]:
+            my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+            # my_groups = self.bot.groups().search(u'有赚就行')[0]
+        else:
+            my_groups = self.bot.groups().search(u'有赚就行')[0]
         my_groups.send(message)
         my_groups.send_image(image_path)
         time.sleep(1)
@@ -347,7 +350,7 @@ class main:
             if stock.inform_flag:
                 dk = draw_k_line()
                 dk.draw_image(stock.stock_id,stock.chart_title,stock.open_price,stock.high_price,stock.low_price,stock.new_price)
-                self.wx_send.send_message(stock.message,dk.image_path)
+                self.wx_send.send_message(stock.message,dk.image_path,stock.monitor_type)
                 logging.debug('message:{}'.format(stock.message))
                 print('message:{}'.format(stock.message))
                 stock.inform_flag = False

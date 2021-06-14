@@ -19,7 +19,7 @@ db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db
                      database=db_config["database"])
 #记录需要查询的类型表及SQL
 table_dict = {}
-table_code = {'zhuang':'1','remen_xiaoboxin':'2'}
+table_code = {'zhuang':'1','remen_xiaoboxin':'2','remen_xiaoboxin_c':'3'}
 def creat_sql(trade_date):
     table_dict['zhuang'] = 'SELECT stock_id,stock_name,zhuang_grade as grade,"zhuang" ' \
                            'FROM com_zhuang ' \
@@ -53,9 +53,10 @@ def deal_data(lastest_day):
         print('data:',data)
         stock_list.extend(list(data))
     for i in range(len(stock_list)):
+        # print(stock_list[i])
         stock_l = list(stock_list[i])
         #stock_id + date + table_code
-        stock_l.append(sotck_l[0] + lastest_day_str + table_code[stock_l[3]])
+        stock_l.append(stock_l[0] + lastest_day_str + table_code[stock_l[3]])
         stock_l.append(lastest_day)
         stock_list[i] = tuple(stock_l)
     print('stock_list:',stock_list)
