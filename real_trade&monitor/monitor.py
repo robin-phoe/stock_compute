@@ -19,13 +19,9 @@ from readconfig import read_config
 logging.basicConfig(level=logging.DEBUG, filename='../log/monitor.log', filemode='a',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
-<<<<<<< HEAD
-db = pymysql.connect(host="127.0.0.1", user="user1", password="Zzl08382020", database="stockdb")
-=======
 db_config = read_config('db_config')
 db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"],
                      database=db_config["database"])
->>>>>>> c3e4183d702f6f974de29706defbd9311034550f
 
 class creat_df_from_db:
     def __init__(self):
