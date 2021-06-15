@@ -11,11 +11,17 @@ import mpl_finance
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 import re
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 
 logging.basicConfig(level=logging.DEBUG, filename='../log/monitor.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
-db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
+db_config = read_config('db_config')
+db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"],
+                     database=db_config["database"])
 
 class creat_df_from_db:
     def __init__(self):
@@ -181,13 +187,14 @@ class stock_buffer:
         cursor.execute(sql)  # 执行SQL语句
         yesterday = cursor.fetchall()[0][0].strftime("%Y-%m-%d")
         cursor.close()
-        logging.info('monitor date:{}'.format(yesterday))
-        print('monitor date:{}'.format(yesterday))
+        logging.info('监控日期:{}'.format(yesterday))
+        print('监控日期:{}'.format(yesterday))
         sql = "select M.monitor,I.stock_id,I.stock_name,M.grade,M.monitor_type,I.bk_name from stock_informations I " \
-              " LEFT JOIN (select * from monitor  where trade_date = '{}') M" \
+              " INNER JOIN (select * from monitor  where trade_date = '{}') M" \
               " ON M.stock_id = I.stock_id " .format(yesterday)
         made_df = creat_df_from_db()
         df = made_df.creat_df(sql)
+        print('监控数量：{}'.format(len(df)))
         return df
     def init_stock_buffer(self):
         df = self.__select_monitor()
@@ -242,10 +249,14 @@ class bk_buffer:
 class wx_send_message:
     def __init__(self):
         self.bot = Bot(cache_path=True)
-    def send_message(self,message,image_path):
+    def send_message(self,message,image_path,monitor_type):
         # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
-        # my_groups = self.bot.groups().search(u'有赚就行')[0]
-        my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+        if monitor_type in ['remen_xiaoboxin_c',]:
+            my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+            # my_groups = self.bot.groups().search(u'有赚就行')[0]
+        else:
+            # my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+            my_groups = self.bot.groups().search(u'有赚就行')[0]
         my_groups.send(message)
         my_groups.send_image(image_path)
         time.sleep(1)
@@ -344,7 +355,7 @@ class main:
             if stock.inform_flag:
                 dk = draw_k_line()
                 dk.draw_image(stock.stock_id,stock.chart_title,stock.open_price,stock.high_price,stock.low_price,stock.new_price)
-                self.wx_send.send_message(stock.message,dk.image_path)
+                self.wx_send.send_message(stock.message,dk.image_path,stock.monitor_type)
                 logging.debug('message:{}'.format(stock.message))
                 print('message:{}'.format(stock.message))
                 stock.inform_flag = False

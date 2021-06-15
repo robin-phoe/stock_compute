@@ -36,7 +36,8 @@ def get_df_from_db(sql, db):
     cursor.close()
     return df
 def sel_remen_xiaoboxin(date):
-    sql = "select trade_code,trade_date,stock_id,stock_name from remen_xiaoboxin where trade_date = '{}' ".format(date)
+    sql = "select trade_code,trade_date,stock_id,stock_name from remen_xiaoboxin_c " \
+          "where trade_date = '{}' and grade > 10000 and stock_id not like '300%' and stock_id not like '688%' ".format(date)
     remen_df = get_df_from_db(sql, db)
     id_list = remen_df['stock_id'].tolist()
     id_tuple = tuple(id_list)
@@ -47,7 +48,7 @@ def save(df):
     cursor = db.cursor()
     layer_list = df_layer.apply(lambda row: tuple(row), axis=1).values.tolist()
     try:
-        sql = "update remen_xiaoboxin SET validate_layer=(%s) where trade_code=(%s)"
+        sql = "update remen_xiaoboxin_c SET validate_layer=(%s) where trade_code=(%s)"
         cursor.executemany(sql, layer_list)  # commit_id_list上面已经说明
         db.commit()
         print('存储成功。')
@@ -85,6 +86,7 @@ def sel_trade_data(date,id_tuple):
               "from stock_trade_data where stock_id in {0} and trade_date>='{1}' and trade_date<='{2}'".format(
             id_tuple,date,end_date)
     print('sql:',sql)
+    print('date:',date)
     trade_df = get_df_from_db(sql,db)
     # print('trade_df:',trade_df)
     trade_df['call_price'] = 0
@@ -175,9 +177,9 @@ def history(start_date,end_date):
     res_df['pl_layer2_rate'] = res_df['pl_layer2_count'] / res_df['count_df'] * 100
     res_df['pl_layer3_rate'] = res_df['pl_layer3_count'] / res_df['count_df'] * 100
     res_df['pl_layer4_rate'] = res_df['pl_layer4_count'] / res_df['count_df'] * 100
-    file_name = "./validate_report/validate_xiaoboxin.csv"
+    file_name = "./validate_report/validate_xiaoboxin_c.csv"
     res_df.to_csv(file_name,encoding='utf-8')
 if __name__ == '__main__':
-    date = '2021-04-29'
+    date = '2021-04-14'
     # main(date)
-    history('2018-01-01','2021-04-29')
+    history('2021-02-01','2021-06-09')
