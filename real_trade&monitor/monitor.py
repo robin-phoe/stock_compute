@@ -11,7 +11,10 @@ import mpl_finance
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 import re
-import pub_uti
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
+from readconfig import read_config
 
 logging.basicConfig(level=logging.DEBUG, filename='../log/monitor.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
@@ -184,13 +187,14 @@ class stock_buffer:
         cursor.execute(sql)  # 执行SQL语句
         yesterday = cursor.fetchall()[0][0].strftime("%Y-%m-%d")
         cursor.close()
-        logging.info('monitor date:{}'.format(yesterday))
-        print('monitor date:{}'.format(yesterday))
+        logging.info('监控日期:{}'.format(yesterday))
+        print('监控日期:{}'.format(yesterday))
         sql = "select M.monitor,I.stock_id,I.stock_name,M.grade,M.monitor_type,I.bk_name from stock_informations I " \
-              " LEFT JOIN (select * from monitor  where trade_date = '{}') M" \
+              " INNER JOIN (select * from monitor  where trade_date = '{}') M" \
               " ON M.stock_id = I.stock_id " .format(yesterday)
         made_df = creat_df_from_db()
         df = made_df.creat_df(sql)
+        print('监控数量：{}'.format(len(df)))
         return df
     def init_stock_buffer(self):
         df = self.__select_monitor()
@@ -251,6 +255,7 @@ class wx_send_message:
             my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
             # my_groups = self.bot.groups().search(u'有赚就行')[0]
         else:
+            # my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
             my_groups = self.bot.groups().search(u'有赚就行')[0]
         my_groups.send(message)
         my_groups.send_image(image_path)
