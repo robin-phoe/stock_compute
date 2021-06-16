@@ -16,7 +16,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
 
-logging.basicConfig(level=logging.DEBUG, filename='../log/monitor.log', filemode='a',
+logging.basicConfig(level=logging.INFO, filename='../log/monitor.log', filemode='a',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 db_config = read_config('db_config')
