@@ -215,7 +215,7 @@ def run():
     p = Pool(8)
     for i in range(0, 10):
         his = history(str(i))
-        p.apply_async(his.core())
+        p.apply_async(his.core)
     #    p.apply_async(main, args=('1',date,))
     print('Waiting for all subprocesses done...')
     p.close()
