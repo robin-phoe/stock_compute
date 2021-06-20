@@ -159,7 +159,7 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date ='2021-06-16'#None#'2021-02-01' #'2021-01-20'
+    date ='2021-06-18'#None#'2021-02-01' #'2021-01-20'
     st_buff = stock_buffer()
     st_buff.init_buffer()
     # history(start_date= '2021-01-01', end_date= '2021-06-14')

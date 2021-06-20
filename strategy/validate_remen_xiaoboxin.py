@@ -151,7 +151,7 @@ def history(start_date,end_date):
             'pl_layer4_count':[],
             }
     res_df = pd.DataFrame(data)
-    sql = "select distinct(trade_date) from com_redu_test where trade_date >= '{}' and trade_date <= '{}'".format(start_date,end_date)
+    sql = "select distinct(trade_date) from remen_xiaoboxin_c where trade_date >= '{}' and trade_date <= '{}'".format(start_date,end_date)
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
     cursor.execute(sql)  # 执行SQL语句
     date_tuple = cursor.fetchall()
@@ -182,4 +182,4 @@ def history(start_date,end_date):
 if __name__ == '__main__':
     date = '2021-04-14'
     # main(date)
-    history('2021-02-01','2021-06-09')
+    history('2021-02-01','2021-06-30')
