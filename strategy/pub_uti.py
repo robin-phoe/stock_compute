@@ -58,6 +58,27 @@ class select_db:
 s_d = select_db()
 select_from_db = s_d.select_from_db
 """
+【功能】db一般执行功能
+"""
+class commit_to_db_cla:
+    def __init__(self):
+        cd = con_db()
+        self.db = cd.creat_db()
+    def commit_db(self,sql):
+        cursor = self.db.cursor()
+        try:
+            cursor.execute(sql)
+            self.db.commit()
+            print('执行完成')
+            logging.info('执行完成')
+        except Exception as err:
+            self.db.rollback()
+            print('执行失败:', err, sql)
+            logging.error('执行失败:{}'.format(err))
+        cursor.close()
+c_d = commit_to_db_cla()
+commit_to_db = c_d.commit_db
+"""
 【功能】存储功能
 """
 class save:

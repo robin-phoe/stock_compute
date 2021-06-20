@@ -94,7 +94,6 @@ class com_point:
         self.res_list = []
         self.save_sql = ''
     def enter_new_point(self,date,high_price,low_price,open_price,close_price):
-        self.save_sql = ''
         self.new_point = point(type=False, date=date, high_price=high_price,low_price=low_price,open_price = open_price,close_price = close_price)
         if self.dynamic_point1 == '':
             self.dynamic_point1 = deepcopy(self.new_point)
@@ -170,18 +169,25 @@ class main:
             cp.enter_new_point(self.df.loc[i,'trade_date'],self.df.loc[i,'high_price'],self.df.loc[i,'low_price'],)
         # print(cp.res_list)
 class history:
-    def __init__(self,table=None):
+    def __init__(self,date,table=None):
         self.df = ''
         self.id_set = set()
         self.sto_tab = table
+        self.date = date
     def select_df(self):
         cf = creat_df_from_db()
         if self.sto_tab != None:
+            clean_sql = "update stock_trade_data set wave_data = 0 , point_type = '' " \
+                        " where trade_date >= '{}' and stock_id like '%{}'".format(self.date,self.sto_tab)
+            pub_uti.commit_to_db(clean_sql)
             sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
-                  "where trade_date >= '2020-01-01' and stock_id like '%{}'".format(self.sto_tab)
+                  "where trade_date >= '{}' and stock_id like '%{}'".format(self.date,self.sto_tab)
         else:
+            clean_sql = "update stock_trade_data set wave_data = 0 , point_type = '' " \
+                        " where trade_date >= '{}' ".format(self.date)
+            pub_uti.commit_to_db(clean_sql)
             sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
-                  "where trade_date >= '2020-01-01' "
+                  "where trade_date >= '{}' ".format(self.date)
         self.df = cf.creat_df(sql)
     def core(self):
         self.select_df()
@@ -202,19 +208,19 @@ class history:
                 if cp.save_sql != '':
                     save_trade.add_sql(cp.save_sql)
             print(cp.res_list)
-            boxin_list = str(cp.res_list).replace('\'', '"')
-            wave_sql = 'insert into boxin_data(stock_id,boxin_list) ' \
-                  'values(\'{0}\',\'{1}\') ' \
-                  'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
-                  ''.format(id, boxin_list)
-            save_wave.add_sql(wave_sql)
-        save_wave.commit()
+            # boxin_list = str(cp.res_list).replace('\'', '"')
+        #     wave_sql = 'insert into boxin_data(stock_id,boxin_list) ' \
+        #           'values(\'{0}\',\'{1}\') ' \
+        #           'ON DUPLICATE KEY UPDATE stock_id=\'{0}\',boxin_list=\'{1}\' ' \
+        #           ''.format(id, boxin_list)
+        #     save_wave.add_sql(wave_sql)
+        # save_wave.commit()
         save_trade.commit()
         print('耗时：',datetime.datetime.now() - start)
-def run():
+def run(date):
     p = Pool(8)
     for i in range(0, 10):
-        his = history(str(i))
+        his = history(date,str(i))
         p.apply_async(his.core)
     #    p.apply_async(main, args=('1',date,))
     print('Waiting for all subprocesses done...')
@@ -227,6 +233,6 @@ if __name__ == '__main__':
     # m = main()
     # m.compute()
 
-    h = history()
+    h = history(date='2021-05-01')
     h.core()
-    # run()
+    # run(date='2021-05-01')
