@@ -14,7 +14,7 @@ import pymysql
 import logging
 import json
 import datetime
-logging.basicConfig(level=logging.DEBUG, filename='../log/stock_day_trade1.log', filemode='w',
+logging.basicConfig(level=logging.ERROR, filename='../log/stock_day_trade1.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
 cursor = db.cursor()
@@ -44,26 +44,26 @@ def getOnePageStock(page,date_str):
         print('data:',data)
         trade_code=date_str+data['f12']
         print(trade_code)
-        if 1:
-            try:
-                sql="insert into stock_trade_data(trade_code,stock_name,stock_id,trade_date,close_price,increase," \
-                    "open_price,turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money) " \
-                    "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')" \
-                    "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_name='{1}',stock_id='{2}',trade_date='{3}'," \
-                    "close_price='{4}',increase='{5}',open_price='{6}',turnover_rate='{7}'," \
-                    "P_E='{8}',P_B='{9}',high_price='{10}',low_price='{11}',trade_amount='{12}',trade_money='{13}'" \
-                    .format(trade_code,data['f14'],data['f12'],date_str,data['f2'],data['f3'],data['f17'],
-                            data['f8'],data['f9'],data['f23'],data['f15'],data['f16'],data['f5'],data['f6'])
-                cursor.execute(sql)
-                db.commit()
-                print('存储完成:page:{},id:{},name:{}'.format(page,data['f12'],data['f14']))
-                logging.info('存储完成:page:{},id:{},name:{}'.format(page,data['f12'],data['f14']))
-                count += 1
-                print('count:',count)
-            except Exception as err:
-                db.rollback()
-                logging.error('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
-                print('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
+        # if 1:
+        #     try:
+        #         sql="insert into stock_trade_data(trade_code,stock_name,stock_id,trade_date,close_price,increase," \
+        #             "open_price,turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money) " \
+        #             "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')" \
+        #             "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_name='{1}',stock_id='{2}',trade_date='{3}'," \
+        #             "close_price='{4}',increase='{5}',open_price='{6}',turnover_rate='{7}'," \
+        #             "P_E='{8}',P_B='{9}',high_price='{10}',low_price='{11}',trade_amount='{12}',trade_money='{13}'" \
+        #             .format(trade_code,data['f14'],data['f12'],date_str,data['f2'],data['f3'],data['f17'],
+        #                     data['f8'],data['f9'],data['f23'],data['f15'],data['f16'],data['f5'],data['f6'])
+        #         cursor.execute(sql)
+        #         db.commit()
+        #         print('存储完成:page:{},id:{},name:{}'.format(page,data['f12'],data['f14']))
+        #         logging.info('存储完成:page:{},id:{},name:{}'.format(page,data['f12'],data['f14']))
+        #         count += 1
+        #         print('count:',count)
+        #     except Exception as err:
+        #         db.rollback()
+        #         logging.error('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
+        #         print('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
     return 1
 def main(date):
     if date == None:
@@ -75,6 +75,4 @@ def main(date):
         page = int(page) + 1
 if __name__ == '__main__':
     date = None#'%Y%m%d'
-    main(date)
-    print('completed!')
-
+   
