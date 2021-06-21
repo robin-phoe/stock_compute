@@ -53,6 +53,8 @@ class stock:
             return
         if not self.jugement_wave_acount():
             return
+        if not self.jugement_long():
+            return
         self.grade = 10001
     # 判断最后点是否为低点 & 点是否在 时间范围内
     def jugement_last_point(self):
@@ -90,6 +92,20 @@ class stock:
             return True
         else:
             return False
+    #判断单个段长度超过8个交易日
+    def jugement_long(self):
+        type_list = self.single_df['point_type'][0:20].tolist()
+        count = 0
+        for flag in type_list:
+            # print('flag:',flag)
+            if flag == '':
+                count += 1
+                # print('count:',count)
+                if count > 8:
+                    return False
+            else:
+                count = 0
+        return True
 
 class stock_buffer:
     def __init__(self,date = None):
@@ -99,9 +115,11 @@ class stock_buffer:
         self.sql_range_day = 90
         self.sql_start_date = ''#'2021-06-10'
         self.id_set = set()
+        self.save = ''
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
+        self.clean_tab()
         self.select_info()
         self.save = pub_uti.save()
         for id in self.id_set:
@@ -113,6 +131,9 @@ class stock_buffer:
             self.date = pub_uti.select_from_db(sql=sql)[0][0]
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
+    def clean_tab(self):
+        sql = "delete from remen_xiaoboxin_c where trade_date = '{}'".format(self.date)
+        pub_uti.commit_to_db(sql)
     def select_info(self):
         trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type " \
                     " FROM stock_trade_data " \
