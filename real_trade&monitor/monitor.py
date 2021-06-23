@@ -16,7 +16,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
 
-logging.basicConfig(level=logging.ERROR, filename='../log/monitor.log', filemode='a',
+logging.basicConfig(level=logging.CRITICAL, filename='../log/monitor.log', filemode='a',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 db_config = read_config('db_config')
@@ -251,7 +251,7 @@ class wx_send_message:
         self.bot = Bot(cache_path=True)
     def send_message(self,message,image_path,monitor_type):
         # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
-        if monitor_type in ['remen_xiaoboxin_c',]:
+        if monitor_type in ['remen_xiaoboxin',]:
             my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
             # my_groups = self.bot.groups().search(u'有赚就行')[0]
         else:
