@@ -1,9 +1,12 @@
+# coding:utf-8
+# import tushare as ts
 import pandas as pd
 import pymysql
 import datetime
 import logging
 import re
 from multiprocessing import Pool
+from itertools import chain
 import json
 import copy
 import numpy as np
@@ -11,187 +14,173 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
+import pub_uti
+
 
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
 
-logging.basicConfig(level=logging.DEBUG, filename='../log/single_limit_up.log', filemode='a',
+logging.basicConfig(level=logging.DEBUG, filename='../log/remen_xiaoboxin_B.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
-def get_df_from_db(sql, db):
-    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    cursor.execute(sql)  # 执行SQL语句
-    data = cursor.fetchall()
-    # 下面为将获取的数据转化为dataframe格式
-    columnDes = cursor.description  # 获取连接对象的描述信息
-    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
-    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
-    cursor.close()
-    return df
-def save(db,df,date):
-    cursor = db.cursor()
-    #清理当日原数据
-    sql = "delete from limit_up_single where trade_date = '{}'".format(date)
-    try:
-        cursor.execute(sql)
-        db.commit()
-        print('date:{} 清理成功。'.format(date))
-        logging.info('date:{} 清理成功。'.format(date))
-    except Exception as err:
-        print('date:{} 清理失败:{}'.format(date,err))
-        logging.info('date:{} 清理失败:{}'.format(date,err))
-    #df转列表
-    data_list = df.apply(lambda row: tuple(row), axis=1).values.tolist()
-    try:
-        sql = "insert into  limit_up_single(trade_code,stock_id,stock_name,trade_date,grade,monitor) \
-            values(%s,%s,%s,%s,%s,%s) "
-        # print('sql:', sql)
-        cursor.executemany(sql, data_list)
-        db.commit()
-        print('存储完成')
-        logging.info('存储完成')
-    except Exception as err:
-        db.rollback()
-        print('存储失败:', err)
-        logging.error('存储失败:{}'.format(err))
-    cursor.close()
-def core(date,db=None):
-    if db == None:
-        db_config = read_config('db_config')
-        db = pymysql.connect(host=db_config["host"], user=db_config["user"],
-                         password=db_config["password"], database=db_config["database"])
-    if date == None:
-        date = datetime.datetime.now().strftime('%Y-%m-%d')
-    date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
-    start_t = (date_time - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
-    time_start = datetime.datetime.now()
-    sql = "select trade_code,stock_id,stock_name,trade_date,close_price,increase,turnover_rate " \
-          "from stock_trade_data " \
-          "where stock_id not like '688%' and trade_date >= '{0}' and trade_date <= '{1}' " \
-          "".format(start_t,date)  # and stock_id in ('002940','000812')
-    #test
-    # sql = "select trade_code,stock_id,stock_name,trade_date,close_price,increase,turnover_rate " \
-    #       "from stock_trade_data " \
-    #       "where stock_id in ('002940','002168') and trade_date >= '{0}' and trade_date <= '{1}' " \
-    #       "".format(start_t,date)  # and stock_id in ('002940','000812')
-    df = get_df_from_db(sql, db)
-    time_end = datetime.datetime.now()
-    print('delta_time:',time_end - time_start)
-    #标记limit_up 数据行
-    df['limit_up'] = df['increase'].apply(lambda x: 1 if x >= 9.75 else 0)
-    #设置时间为索引
-    df = df.set_index(keys=['trade_date'])
-    #日期升序排序
-    df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last', inplace=True)
-    #计算涨停后平缓或者下降趋势，小于等于涨停收盘*102.5% AND 大于 （）：
-    print('df columns1:', df.columns)
-    df['grade'] = 0
-    #shift increase
-    df['shift1'] = df.groupby(['stock_id'])['increase'].shift(-1)
-    df['shift1'].fillna(-1000,inplace=True)
-    df['shift2'] = df.groupby(['stock_id'])['increase'].shift(-2)
-    df['shift2'].fillna(-1000, inplace=True)
-    df['shift3'] = df.groupby(['stock_id'])['increase'].shift(-3)
-    df['shift3'].fillna(-1000, inplace=True)
-    df['shift4'] = df.groupby(['stock_id'])['increase'].shift(-4)
-    df['shift4'].fillna(-1000, inplace=True)
-    print('df columns2:', df.columns)
-    def com_shift(row):
-        day_count=0
-        if row['limit_up'] != 1:
-            return row
-        if row['shift4'] != -1000:
-            day_count = 4
-        elif row['shift3'] != -1000:
-            day_count = 3
-        elif row['shift2'] != -1000:
-            day_count = 2
-        elif row['shift1'] != -1000:
-            day_count = 1
+
+
+class stock:
+    def __init__(self,id,date,single_df):
+        self.id = id
+        self.single_df = single_df #时间倒序
+        self.date = date
+        self.grade = 0
+        self.low_standard = 1.03
+        self.after_inc = 0
+        self.before_inc = 0
+        self.after_inc_abs = 0
+        self.before_inc_abs = 0
+        self.limit_up_flag = False
+        # self.after_days = 10
+        self.before_days = 10
+        self.trade_code = re.sub('-', '', self.date) + self.id
+        self.single_limit = 0
+        self.after_day = 0
+        self.stop = False
+    def compute(self):
+        count = 0
+        for i in range(len(self.single_df)):
+            if not self.limit_up_flag:
+                if self.single_df.loc[i,'flag'] == 1:
+                    if i == 0:
+                        self.stop = True
+                        return
+                    self.limit_up_flag = True
+                    continue
+                if self.single_df.loc[i,'increase'] >= 5:
+                    self.stop = True
+                    return
+                self.after_inc += self.single_df.loc[i,'increase']
+                self.after_inc_abs += abs(self.single_df.loc[i, 'increase'])
+            else:
+                if count >= self.before_days:
+                    break
+                self.before_inc += self.single_df.loc[i,'increase']
+                self.before_inc_abs += abs(self.single_df.loc[i, 'increase'])
+                count += 1
+        self.count_limit_up()
+        self.com_grade()
+    def com_grade(self):
+        #万：(20000:1个涨停，10000：2个连续涨停)
+        #千：(2000:涨停第二日开收盘价低于前日涨停价格，1000：开收盘价格低于3%，else：0)
+        #百：(abs(int(after_inc))*100)
+        print('前斜率：{}{}'.format(self.before_inc,self.before_inc_abs))
+        if self.before_inc > 5 or self.before_inc < -5 or self.before_inc_abs > 15:
+            return
+        if self.after_inc > 3:
+            return
+        self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100
+    def count_limit_up(self):
+        limit_up_df = self.single_df.head(10)
+        flag_index_list = limit_up_df[limit_up_df.flag == 1].index.to_list()
+        if len(flag_index_list) == 1:
+            self.single_limit = 20000
         else:
-            return row
-        sum_increase = 0
-        for i in range(1,day_count+1):
-            if row['shift{}'.format(str(i))] > 2.5:
-                return row
-            sum_increase += row['shift{}'.format(str(i))]
-        if sum_increase >= 5 :
-            return row
-        if day_count <= 3 and -5 < sum_increase < 2:
-             row['grade'] = 20000
-        else:
-             row['grade'] = 10000
-        return row
-    df = df.apply(com_shift,axis=1)
-    #rolling 5日统计
-    limit_up_5 = df.groupby(['stock_id'])['limit_up','grade'].rolling(5).sum()
-    print('limit_up_5:', limit_up_5)
-    limit_up_20 = df.groupby(['stock_id'])['limit_up'].rolling(20).sum()
-    # print('limit_up_20:', limit_up_20)
-    df = pd.merge(df, limit_up_5, how='left', on=['stock_id', 'trade_date'])
-    print('df columns:',df.columns)
-    df.rename(columns={'limit_up_x': 'limit_up', 'limit_up_y': 'limit_up_5','grade_y':'grade'}, inplace=True)
-    df = pd.merge(df, limit_up_20, how='left', on=['stock_id', 'trade_date'])
-    df.rename(columns={'limit_up_x': 'limit_up', 'limit_up_y': 'limit_up_20'}, inplace=True)
+            if abs(flag_index_list[0] - flag_index_list[1]) == 1:
+                self.single_limit = 10000
+            else:
+                self.single_limit = 20000
+    #涨停第二日开收盘价与前日涨停价格比照
+    def com_price(self,i):
+        limit_c_price = self.single_df.loc[i,'close_price']
+        if i == 0:
+            self.after_day = 0
+        if self.single_df.loc[i-1,'close_price'] <= limit_c_price and self.single_df.loc[i-1,'open_price'] <= limit_c_price:
+            self.after_day = 2000
+        elif self.single_df.loc[i-1,'close_price'] <= limit_c_price*1.03 and self.single_df.loc[i-1,'open_price'] <= limit_c_price*1.03:
+            self.after_day = 1000
 
-    df.fillna(0,inplace=True)
-    #删除不是今日的数据行
-    df.reset_index(inplace=True)
-    df.drop(df[df.trade_date < date].index, inplace=True)
-    #删除limit_up_5 <1数据行
-    df.drop(df[df.limit_up_5 < 1].index, inplace=True)
-    #删除limit_up_20 >3数据行
-    df.drop(df[df.limit_up_20 > 3].index, inplace=True)
-    #删除grade = 0数据行
-    df.drop(df[df.grade < 1000].index, inplace=True)
-    df['monitor'] = 1
-    df['trade_date'] = df['trade_date'].astype('str',)
-    print('df_column:',df.columns)
-    df = df[['trade_code','stock_id','stock_name','trade_date','grade','monitor']]
-    print('df:',df)
-    save(db, df, date)
-def main(date):
-    db_config = read_config('db_config')
-    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
-                         password=db_config["password"], database=db_config["database"])
+class stock_buffer:
+    def __init__(self,date = None):
+        self.stock_buffer = {}
+        self.trade_df = ''
+        self.date = date
+        self.sql_range_day = 50
+        self.sql_start_date = ''#'2021-06-10'
+        self.id_set = set()
+        self.save = ''
+        #trade_data区间开始的时间
+    def init_buffer(self):
+        self.creat_time()
+        self.clean_tab()
+        self.select_info()
+        self.save = pub_uti.save()
+        for id in self.id_set:
+            self.init_stock(id)
+        self.save.commit()
+    def creat_time(self):
+        if self.date == None:
+            sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
+            self.date = pub_uti.select_from_db(sql=sql)[0][0]
+        self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
+                               datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
+    def clean_tab(self):
+        sql = "delete from limit_up_single where trade_date = '{}'".format(self.date)
+        pub_uti.commit_to_db(sql)
+    def select_info(self):
+        trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,increase " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
+                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%'".format(self.sql_start_date,self.date)
+        print('trade_sql:{}'.format(trade_sql))
+        self.trade_df = pub_uti.creat_df(sql=trade_sql)
+        self.trade_df.fillna('',inplace=True)
+        self.id_set = set(self.trade_df['stock_id'].tolist())
+        #test
+        # self.id_set = ('603035','603036')
+        # print(self.df.columns)
+    def init_stock(self,id):
+        single_df = self.trade_df.loc[self.trade_df.stock_id == id]
+        single_df.reset_index(inplace=True)
+        if len(single_df) < 30 :
+            return
+        # single_df = single_df.head(10)
+        single_df['flag'] = single_df['increase'].apply(lambda x: 1 if x>=9.75 else 0)
+        flag_list = single_df['flag'].to_list()[0:10]
+        if sum(flag_list) > 2 or sum(flag_list) == 0:
+            return
+        stock_name = single_df.loc[0,'stock_name']
+        self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
+        stock_object.compute()
+        sql = "insert into limit_up_single(trade_code,stock_id,stock_name,trade_date,grade) " \
+              "values('{0}','{1}','{2}','{3}','{4}') " \
+              "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}' " \
+              "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade)
+        print(stock_name,id, stock_object.grade)
+        self.save.add_sql(sql)
+    def get_stock(self,id):
+        pass
 
-    core(date,db)
-def history(start_date = None,end_date = None):
-    db_config = read_config('db_config')
-    db = pymysql.connect(host=db_config["host"], user=db_config["user"],
-                         password=db_config["password"], database=db_config["database"])
-    #清理时间区间内数据
-    cursor = db.cursor()
-    sql = 'delete from limit_up_single'
-    cursor.execute(sql)
-    db.commit()
 
-    #查询时间列表
-    sql = "select trade_date from stock_trade_data"
-    cursor.execute(sql)  # 执行SQL语句
-    date_tuple = cursor.fetchall()
-    cursor.close()
-    #case 1 multi process
-    # p = Pool(4)
-    # for i in range(0, len(date_tuple)):
-    #     date = date_tuple[i][0]
-    #     print('date:',date)
-    #     p.apply_async(core, args=(date,None,))
-    # #    p.apply_async(main, args=('1',date,))
-    # print('Waiting for all subprocesses done...')
-    # p.close()
-    # p.join()
-    # print('All subprocesses done.')
+'''
+计算历史指定日期情况（用于验证）
+'''
+def history(start_date,end_date):
+    sql = "select distinct date_format(trade_date ,'%Y-%m-%d') as trade_date from stock_trade_data where trade_date>= '{}' and trade_date <= '{}'".format(start_date,end_date)
+    date_tuple = pub_uti.select_from_db(sql=sql) #(('2021-06-14',),('2021-06-15',))
+    date_list = list(chain.from_iterable(date_tuple))
+    p = Pool(8)
+    for i in range(0, len(date_list)):
+        st_buff = stock_buffer(date_list[i])
+        p.apply_async(st_buff.init_buffer)
+    #    p.apply_async(main, args=('1',date,))
+    print('Waiting for all subprocesses done...')
+    p.close()
+    p.join()
+    print('All subprocesses done.')
 
-    #case2 single process
-    for i in range(0, len(date_tuple)):
-        date = (date_tuple[i][0]).strftime('%Y-%m-%d')
-        core(date, db)
 
 if __name__ == '__main__':
-    date = '2020-12-31'
-    time1 = datetime.datetime.now()
-    # main(date)
-    history()
-    print('time_delta:',datetime.datetime.now() - time1)
+    date =None#'2021-02-01' #'2021-01-20'
+    st_buff = stock_buffer(date)
+    st_buff.init_buffer()
+    # history(start_date= '2021-01-01', end_date= '2021-06-14')
+    print('completed.')
