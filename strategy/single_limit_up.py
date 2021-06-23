@@ -32,81 +32,77 @@ class stock:
         self.single_df = single_df #时间倒序
         self.date = date
         self.grade = 0
-        self.point_tuple = ()
         self.low_standard = 1.03
-        self.wave_long = 35
-        self.range_day = 3
-        self.last_point_index = ''
-        self.last_point_value = 0
+        self.after_inc = 0
+        self.before_inc = 0
+        self.after_inc_abs = 0
+        self.before_inc_abs = 0
+        self.limit_up_flag = False
+        # self.after_days = 10
+        self.before_days = 10
         self.trade_code = re.sub('-', '', self.date) + self.id
-
+        self.single_limit = 0
+        self.after_day = 0
+        self.stop = False
     def compute(self):
-        if not self.jugement_last_point():
-            return
-        if not self.jugement_increase_after_point():
-            return
-        if not self.jugement_wave_acount():
-            return
-        if not self.jugement_long():
-            return
-        self.grade = 10001
-    # 判断最后点是否为低点 & 点是否在 时间范围内
-    def jugement_last_point(self):
-        # 取最后一组tuple
-        if len(self.single_df) <= self.range_day:
-            return False
-        for i in range(self.range_day):
-            point_type = self.single_df.loc[i,'point_type']
-            if point_type == 'l':
-                self.last_point_index = i
-                self.last_point_value = self.single_df.loc[i,'wave_data']
-                return True
-            elif point_type == 'h':
-                return False
-        return False
-    #判断在低点3%以内
-    def jugement_increase_after_point(self):
-        price_rate = self.single_df.loc[0,'close_price'] / self.last_point_value #长下影线会被排除
-        if price_rate < self.low_standard:
-            print('在低点3%以内')
-            return True
-        else:
-            print('不在低点3%以内！')
-            return False
-    #判断20个交易日内应该有三个以上的tuple（1.5个组波形）
-    def jugement_wave_acount(self):
-        if len(self.single_df) < 20:
-            print('point_json长度小于4')
-            return False
-        type_list = self.single_df['point_type'][0:20].tolist()
-        l_count = type_list.count('l')
-        h_count = type_list.count('h')
-        if l_count >= 3 or h_count >= 3:
-            print('波形符合')
-            return True
-        else:
-            return False
-    #判断单个段长度超过8个交易日
-    def jugement_long(self):
-        type_list = self.single_df['point_type'][0:20].tolist()
         count = 0
-        for flag in type_list:
-            # print('flag:',flag)
-            if flag == '':
-                count += 1
-                # print('count:',count)
-                if count > 8:
-                    return False
+        for i in range(len(self.single_df)):
+            if not self.limit_up_flag:
+                if self.single_df.loc[i,'flag'] == 1:
+                    if i == 0:
+                        self.stop = True
+                        return
+                    self.limit_up_flag = True
+                    continue
+                if self.single_df.loc[i,'increase'] >= 5:
+                    self.stop = True
+                    return
+                self.after_inc += self.single_df.loc[i,'increase']
+                self.after_inc_abs += abs(self.single_df.loc[i, 'increase'])
             else:
-                count = 0
-        return True
+                if count >= self.before_days:
+                    break
+                self.before_inc += self.single_df.loc[i,'increase']
+                self.before_inc_abs += abs(self.single_df.loc[i, 'increase'])
+                count += 1
+        self.count_limit_up()
+        self.com_grade()
+    def com_grade(self):
+        #万：(20000:1个涨停，10000：2个连续涨停)
+        #千：(2000:涨停第二日开收盘价低于前日涨停价格，1000：开收盘价格低于3%，else：0)
+        #百：(abs(int(after_inc))*100)
+        print('前斜率：{}{}'.format(self.before_inc,self.before_inc_abs))
+        if self.before_inc > 5 or self.before_inc < -5 or self.before_inc_abs > 15:
+            return
+        if self.after_inc > 3:
+            return
+        self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100
+    def count_limit_up(self):
+        limit_up_df = self.single_df.head(10)
+        flag_index_list = limit_up_df[limit_up_df.flag == 1].index.to_list()
+        if len(flag_index_list) == 1:
+            self.single_limit = 20000
+        else:
+            if abs(flag_index_list[0] - flag_index_list[1]) == 1:
+                self.single_limit = 10000
+            else:
+                self.single_limit = 20000
+    #涨停第二日开收盘价与前日涨停价格比照
+    def com_price(self,i):
+        limit_c_price = self.single_df.loc[i,'close_price']
+        if i == 0:
+            self.after_day = 0
+        if self.single_df.loc[i-1,'close_price'] <= limit_c_price and self.single_df.loc[i-1,'open_price'] <= limit_c_price:
+            self.after_day = 2000
+        elif self.single_df.loc[i-1,'close_price'] <= limit_c_price*1.03 and self.single_df.loc[i-1,'open_price'] <= limit_c_price*1.03:
+            self.after_day = 1000
 
 class stock_buffer:
     def __init__(self,date = None):
         self.stock_buffer = {}
         self.trade_df = ''
         self.date = date
-        self.sql_range_day = 20
+        self.sql_range_day = 50
         self.sql_start_date = ''#'2021-06-10'
         self.id_set = set()
         self.save = ''
@@ -126,31 +122,35 @@ class stock_buffer:
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
     def clean_tab(self):
-        sql = "delete from remen_xiaoboxin_c where trade_date = '{}'".format(self.date)
+        sql = "delete from limit_up_single where trade_date = '{}'".format(self.date)
         pub_uti.commit_to_db(sql)
     def select_info(self):
         trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,increase " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
-                    "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%'".format(self.sql_start_date,self.date)
+                    "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
+                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%'".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
         self.id_set = set(self.trade_df['stock_id'].tolist())
+        #test
+        # self.id_set = ('603035','603036')
         # print(self.df.columns)
     def init_stock(self,id):
         single_df = self.trade_df.loc[self.trade_df.stock_id == id]
         single_df.reset_index(inplace=True)
-        if len(single_df) < 10 :
+        if len(single_df) < 30 :
             return
-        single_df = single_df.head(10)
+        # single_df = single_df.head(10)
         single_df['flag'] = single_df['increase'].apply(lambda x: 1 if x>=9.75 else 0)
-        if sum(single_df['flag']) > 2:
+        flag_list = single_df['flag'].to_list()[0:10]
+        if sum(flag_list) > 2 or sum(flag_list) == 0:
             return
         stock_name = single_df.loc[0,'stock_name']
         self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
         stock_object.compute()
-        sql = "insert into remen_xiaoboxin_c(trade_code,stock_id,stock_name,trade_date,grade) " \
+        sql = "insert into limit_up_single(trade_code,stock_id,stock_name,trade_date,grade) " \
               "values('{0}','{1}','{2}','{3}','{4}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}' " \
               "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade)
@@ -183,3 +183,4 @@ if __name__ == '__main__':
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
     # history(start_date= '2021-01-01', end_date= '2021-06-14')
+    print('completed.')
