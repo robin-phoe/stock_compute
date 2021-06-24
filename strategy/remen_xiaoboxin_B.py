@@ -171,16 +171,6 @@ def main(date):
     db_config = read_config('db_config')
     print('db_config:',db_config)
     db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
-    # db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
-    # cursor = db.cursor()
-    #test 作为单个账号历史数据测试
-    # sql = "select stock_id,stock_name,trade_date,close_price,increase from stock_history_trade{0} " \
-    #       "where trade_date <= '{1}' and stock_id not like '688%' " \
-    #       "and stock_id = '002407' order by trade_date DESC limit {2} ".format(h_tab,date,day_delta)
-    # sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_history_trade{0} " \
-    #       "where trade_date >= '{1}' and trade_date <= '{2}' and stock_id not like '688%' ".format(h_tab,start_t,date)#and stock_id in ('002940','000812')
-    # sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_trade_data " \
-    #       "where trade_date >= '{0}' and trade_date <= '{1}' and stock_id not like '688%' ".format(start_t,date)#and stock_id in ('002940','000812')
     sql = "select stock_id,stock_name,trade_date,close_price,increase,turnover_rate from stock_trade_data " \
           "where stock_id not like '688%' and stock_id not like '300%' and trade_date >= '{0}' and trade_date <= '{1}' " \
           "and stock_name not like 'ST%' and stock_name not like '%ST%' ".format(start_t,date)#and stock_id in ('002940','000812')
