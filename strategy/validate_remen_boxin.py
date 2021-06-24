@@ -78,7 +78,7 @@ def deal_data(df):
 def sel_trade_data(date,id_tuple):
     end_date = (datetime.datetime.strptime(date,'%Y-%m-%d')+datetime.timedelta(days=10)).strftime('%Y-%m-%d')
     if len(id_tuple) == 1:
-        sql = "select trade_code,stock_id,stock_name,open_price,close_price,high_price,trade_date " \
+        sql = "select trade_code,stock_id,stock_name,open_price,close_price,high_price,low_price,trade_date " \
               "from stock_trade_data where stock_id = '{0}' and trade_date>='{1}' and trade_date<='{2}'".format(
             id_tuple[0], date, end_date)
     else:
@@ -181,5 +181,5 @@ def history(start_date,end_date):
     res_df.to_csv(file_name,encoding='utf-8')
 if __name__ == '__main__':
     date = '2021-04-14'
-    main(date)
-    # history('2021-01-01','2021-06-30')
+    # main(date)
+    history('2021-01-01','2021-06-30')
