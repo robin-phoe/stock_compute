@@ -351,7 +351,7 @@ class main:
         for stock_id in stock_buffer.stock_dict:
             stock = stock_buffer.stock_dict[stock_id]
             stock.compute_monitor()
-            print(stock.stock_name,stock.increase,stock.inform_flag)
+            # print(stock.stock_name,stock.increase,stock.inform_flag)
             if stock.inform_flag:
                 dk = draw_k_line()
                 dk.draw_image(stock.stock_id,stock.chart_title,stock.open_price,stock.high_price,stock.low_price,stock.new_price)

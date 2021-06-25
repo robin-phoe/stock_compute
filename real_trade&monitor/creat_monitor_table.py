@@ -19,7 +19,7 @@ db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db
                      database=db_config["database"])
 #记录需要查询的类型表及SQL
 table_dict = {}
-table_code = {'zhuang':'1','remen_xiaoboxin':'2','remen_xiaoboxin_c':'3'}
+table_code = {'zhuang':'1','remen_xiaoboxin':'2','remen_xiaoboxin_c':'3','remen_boxin':'4'}
 def creat_sql(trade_date):
     table_dict['zhuang'] = 'SELECT stock_id,stock_name,zhuang_grade as grade,"zhuang" ' \
                            'FROM com_zhuang ' \
