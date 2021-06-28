@@ -225,5 +225,5 @@ if __name__ == '__main__':
     date ='2021-06-25' #'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
-    # history(start_date= '2021-01-01', end_date= '2021-06-14')
+    # history(start_date= '2021-01-01', end_date= '2021-06-24')
     print(datetime.datetime.now() - start_time)
