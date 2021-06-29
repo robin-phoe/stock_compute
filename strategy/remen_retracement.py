@@ -182,7 +182,7 @@ class stock_buffer:
         trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
-                    " and stock_id = '600844' ".format(self.sql_start_date,self.date)
+                    " and stock_id = '603020' ".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
