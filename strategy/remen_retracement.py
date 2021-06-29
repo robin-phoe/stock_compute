@@ -82,7 +82,7 @@ class stock:
         else:
             self.min_price = self.single_df.loc[self.l_index_list[0], 'close_price']
             self.inc_range = ( self.l_index_list[0],self.h_index_list[0])
-        self.max_price = self.single_df.loc[self.l_index_list[0], 'high_price']
+        self.max_price = self.single_df.loc[self.h_index_list[0], 'high_price']
         self.last_inc = self.max_price / self.min_price - 1
         print('last_inc:',self.last_inc)
         if self.last_inc < 0.2:
