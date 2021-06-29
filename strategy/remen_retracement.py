@@ -72,17 +72,25 @@ class stock:
                                                                                             self.id))
     # 判断热门(涨幅)
     def jugement_last_inc(self):
+        def compare_price(first_p,second_p):
+            if first_p <= second_p:
+                return (first_p, second_p)
+            else:
+                return (second_p, first_p)
         self.l_index_list = self.single_df[self.single_df.point_type == 'l'].index.to_list()
         self.h_index_list = self.single_df[self.single_df.point_type == 'h'].index.to_list()
         if len(self.l_index_list) ==0 or len(self.h_index_list) ==0 :
             return
         if len(self.l_index_list) >= 2 and self.l_index_list[0] < self.h_index_list[0] :
-            self.min_price = self.single_df.loc[self.l_index_list[1],'low_price']
+            self.min_price = compare_price(self.single_df.loc[self.l_index_list[1],'close_price'],
+                                           self.single_df.loc[self.l_index_list[1],'open_price'])[0]
             self.inc_range = (self.l_index_list[1],self.h_index_list[0])
         else:
-            self.min_price = self.single_df.loc[self.l_index_list[0], 'close_price']
+            self.min_price = compare_price(self.single_df.loc[self.l_index_list[0], 'close_price'],
+                                           self.single_df.loc[self.l_index_list[0], 'open_price'])[0]
             self.inc_range = ( self.l_index_list[0],self.h_index_list[0])
-        self.max_price = self.single_df.loc[self.h_index_list[0], 'high_price']
+        self.max_price = compare_price(self.single_df.loc[self.h_index_list[0], 'close_price'],
+                                           self.single_df.loc[self.h_index_list[0], 'open_price'])[1]
         self.last_inc = self.max_price / self.min_price - 1
         print('last_inc:',self.last_inc)
         if self.last_inc < 0.2:
@@ -95,6 +103,8 @@ class stock:
             self.inc_garde = 1000
         elif per_inc <= 0.05:
             self.inc_garde = -1000
+        elif per_inc <= 0.03:
+            self.inc_garde = -2000
         #涨停分数
         limit_up_list = self.single_df['limit_flag'].to_list()[self.inc_range[1] : self.inc_range[0]]
         limit_count = sum(limit_up_list)
@@ -151,6 +161,9 @@ class stock:
             print('不在低点3%以内！')
             return False
         inc_list = self.single_df['increase'].to_list()[0:self.l_index_list[0]]
+        #判断距离低点的距离
+        if self.l_index_list[0] >= 3:
+            self.stabilize_grade = 0
         inc_count = 0
         for inc in inc_list:
             inc_count += abs(inc)
@@ -188,7 +201,7 @@ class stock_buffer:
         sql = "delete from remen_retracement where trade_date = '{}'".format(self.date)
         pub_uti.commit_to_db(sql)
     def select_info(self):
-        trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     " AND stock_id not like '300%' AND stock_id not like '688%' " \
@@ -243,7 +256,7 @@ def history(start_date,end_date):
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
     date ='2021-06-28'#None#'2021-01-20'
-    st_buff = stock_buffer(date)
-    st_buff.init_buffer()
-    # history(start_date= '2021-01-01', end_date= '2021-06-24')
+    # st_buff = stock_buffer(date)
+    # st_buff.init_buffer()
+    history(start_date= '2021-01-01', end_date= '2021-06-24')
     print(datetime.datetime.now() - start_time)
