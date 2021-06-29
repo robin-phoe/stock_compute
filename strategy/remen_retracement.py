@@ -82,7 +82,7 @@ class stock:
         else:
             self.min_price = self.single_df.loc[self.l_index_list[0], 'close_price']
             self.inc_range = ( self.l_index_list[0],self.h_index_list[0])
-        self.max_price = self.single_df.loc[self.l_index_list[0], 'high_price']
+        self.max_price = self.single_df.loc[self.h_index_list[0], 'high_price']
         self.last_inc = self.max_price / self.min_price - 1
         print('last_inc:',self.last_inc)
         if self.last_inc < 0.2:
@@ -158,7 +158,7 @@ class stock_buffer:
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        self.clean_tab()
+        # self.clean_tab()
         self.select_info()
         self.save = pub_uti.save()
         for id in self.id_set:
@@ -179,6 +179,10 @@ class stock_buffer:
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     " AND stock_id not like '300%' AND stock_id not like '688%' " \
                     " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
+        trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    " and stock_id = '600844' ".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
@@ -222,7 +226,7 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
-    date =None#'2021-01-20'
+    date ='2021-01-14'#None#'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
     # history(start_date= '2021-01-01', end_date= '2021-06-24')
