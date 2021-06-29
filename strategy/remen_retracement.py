@@ -52,13 +52,13 @@ class stock:
         self.turnover_grade = 0
     def compute(self):
         if not self.jugement_last_inc():
-            return
+            return False
         if not self.jugement_turnover():
-            return
+            return False
         if not self.jugement_retracement():
-            return
+            return False
         if not self.jugement_increase_after_point():
-            return
+            return False
         self.grade = 10001 + self.inc_garde + self.turnover_grade + self.stabilize_grade + self.retra_grade
         print('总分：{4} ,inc_garde：{0}，turnover_grade：{1}，stabilize_grade：{2}，retra_grade：{3}'.format(self.inc_garde,
                                                                                            self.turnover_grade ,
@@ -185,7 +185,7 @@ class stock_buffer:
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        self.clean_tab()
+        # self.clean_tab()
         self.select_info()
         self.save = pub_uti.save()
         for id in self.id_set:
@@ -206,10 +206,12 @@ class stock_buffer:
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     " AND stock_id not like '300%' AND stock_id not like '688%' " \
                     " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
-        # trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
-        #             " FROM stock_trade_data " \
-        #             "where trade_date >= '{0}' and trade_date <= '{1}' " \
-        #             " and stock_id = '600844' ".format(self.sql_start_date,self.date)
+
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    " and stock_id = '603088' ".format(self.sql_start_date,self.date)
+
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
@@ -224,7 +226,9 @@ class stock_buffer:
         #     return
         stock_name = single_df.loc[0,'stock_name']
         self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
-        stock_object.compute()
+        if not stock_object.compute():
+            print('本条退出。')
+            return
         sql = "insert into remen_retracement(trade_code,stock_id,stock_name,trade_date,grade) " \
               "values('{0}','{1}','{2}','{3}','{4}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}' " \
@@ -255,8 +259,8 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
-    date ='2021-06-28'#None#'2021-01-20'
-    # st_buff = stock_buffer(date)
-    # st_buff.init_buffer()
-    history(start_date= '2021-01-01', end_date= '2021-06-24')
+    date ='2021-06-01'#None#'2021-01-20'
+    st_buff = stock_buffer(date)
+    st_buff.init_buffer()
+    # history(start_date= '2021-01-01', end_date= '2021-06-24')
     print(datetime.datetime.now() - start_time)
