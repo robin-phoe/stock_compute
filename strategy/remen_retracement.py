@@ -70,6 +70,7 @@ class stock:
                                                                                            self.stabilize_grade ,
                                                                                            self.retra_grade,
                                                                                             self.id))
+        return True
     # 判断热门(涨幅)
     def jugement_last_inc(self):
         def compare_price(first_p,second_p):
@@ -226,7 +227,8 @@ class stock_buffer:
         #     return
         stock_name = single_df.loc[0,'stock_name']
         self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
-        if not stock_object.compute():
+        res = stock_object.compute()
+        if not res:
             print('本条退出。')
             return
         sql = "insert into remen_retracement(trade_code,stock_id,stock_name,trade_date,grade) " \
@@ -259,7 +261,7 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
-    date ='2021-06-29'#None#'2021-01-20'
+    date ='2021-06-01'#None#'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
     # history(start_date= '2021-01-01', end_date= '2021-06-24')
