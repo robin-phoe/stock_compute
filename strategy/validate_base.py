@@ -40,10 +40,10 @@ class validate_buffer:
         self.trade_df = pub_uti.creat_df(sql)
         self.trade_df['mod_price'] = (self.trade_df['high_price'] + self.trade_df['low_price'])/2
     def get_vali_stock(self):
-        # sql = "select * from {0} where trade_date >='{1}' and trade_date <='{2}' and grade >= '{3}'".format(
-        #     self.vali_table,self.vali_start,self.vali_end,self.grade)
-        sql = "select * from {0} where trade_date >='{1}' and trade_date <='{2}' and stock_id = '600844' and grade >= '{3}'".format(
+        sql = "select * from {0} where trade_date >='{1}' and trade_date <='{2}' and grade >= '{3}'".format(
             self.vali_table,self.vali_start,self.vali_end,self.grade)
+        # sql = "select * from {0} where trade_date >='{1}' and trade_date <='{2}' and stock_id = '600844' and grade >= '{3}'".format(
+        #     self.vali_table,self.vali_start,self.vali_end,self.grade)
         self.vali_df = pub_uti.creat_df(sql)
         self.stcoK_set = set(self.vali_df['stock_id'].to_list())
     def init_stock(self):
@@ -54,8 +54,8 @@ class validate_buffer:
             trade_single_df.reset_index(inplace=True)
             st_b = stock_buffer(vali_single_df,trade_single_df)
             self.result_df = st_b.commput(self.result_df)
-        print('result_df:',self.result_df)
-        # self.result_df.to_csv(self.report_file_name,encoding='utf_8_sig')
+        # print('result_df:',self.result_df)
+        self.result_df.to_csv(self.report_file_name,encoding='utf_8_sig')
     def create_reslut_df(self):
         data = {'trade_date': [],'stock_id': [],'stock_name': [],'grade': [],'call_price': [],'low_inc_1': []
             , 'high_inc_1': [],'mod_inc_1': [],'low_inc_2': [],'high_inc_2': [],'mod_inc_2': [],'low_inc_3': [],
