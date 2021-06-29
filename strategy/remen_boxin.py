@@ -164,6 +164,7 @@ class stock_buffer:
             self.date = pub_uti.select_from_db(sql=sql)[0][0]
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
+        print('日期：',self.date)
     def clean_tab(self):
         sql = "delete from remen_boxin where trade_date = '{}'".format(self.date)
         pub_uti.commit_to_db(sql)
