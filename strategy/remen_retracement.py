@@ -90,11 +90,25 @@ class stock:
         #日均涨幅
         per_inc = ((self.max_price - self.min_price)/self.min_price) / (self.inc_range[0] - self.inc_range[1])
         if per_inc >= 0.08:
-            self.inc_garde = 5000
-        elif per_inc >=0.06:
             self.inc_garde = 2000
-        elif per_inc >=0.03:
+        elif per_inc >=0.06:
             self.inc_garde = 1000
+        elif per_inc <= 0.05:
+            self.inc_garde = -1000
+        #涨停分数
+        limit_up_list = self.single_df['limit_flag'].to_list()[self.inc_range[1] : self.inc_range[0]]
+        limit_count = sum(limit_up_list)
+        if limit_count > 3 :
+            self.inc_garde += 3000
+        elif limit_count >= 2 :
+            self.inc_garde += 2000
+        elif limit_count > 0 :
+            self.inc_garde += 1000
+        #涨幅分数
+        if self.last_inc >= 0.3:
+            self.inc_garde += 1000
+        if self.inc_garde < 1000:
+            return False
         return True
     # 判断热门(换手率)
     def jugement_turnover(self):
@@ -158,7 +172,7 @@ class stock_buffer:
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        # self.clean_tab()
+        self.clean_tab()
         self.select_info()
         self.save = pub_uti.save()
         for id in self.id_set:
@@ -179,13 +193,15 @@ class stock_buffer:
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     " AND stock_id not like '300%' AND stock_id not like '688%' " \
                     " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
-        trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
-                    " FROM stock_trade_data " \
-                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
-                    " and stock_id = '600844' ".format(self.sql_start_date,self.date)
+        # trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
+        #             " FROM stock_trade_data " \
+        #             "where trade_date >= '{0}' and trade_date <= '{1}' " \
+        #             " and stock_id = '600844' ".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
+        #标价涨停
+        self.trade_df['limit_flag'] = self.trade_df['increase'].apply(lambda x: 1 if x >=9.75 else 0)
         self.id_set = set(self.trade_df['stock_id'].tolist())
         # print(self.df.columns)
     def init_stock(self,id):
