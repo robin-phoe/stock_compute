@@ -189,7 +189,7 @@ class stock_buffer:
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        # self.clean_tab()
+        self.clean_tab()
         self.select_info()
         self.save = pub_uti.save()
         for id in self.id_set:
@@ -205,16 +205,16 @@ class stock_buffer:
         sql = "delete from remen_retracement where trade_date = '{}'".format(self.date)
         pub_uti.commit_to_db(sql)
     def select_info(self):
-        # trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
-        #             " FROM stock_trade_data " \
-        #             "where trade_date >= '{0}' and trade_date <= '{1}' " \
-        #             " AND stock_id not like '300%' AND stock_id not like '688%' " \
-        #             " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
-
         trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
-                    " and stock_id = '601999' ".format(self.sql_start_date,self.date)
+                    " AND stock_id not like '300%' AND stock_id not like '688%' " \
+                    " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
+
+        # trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
+        #             " FROM stock_trade_data " \
+        #             "where trade_date >= '{0}' and trade_date <= '{1}' " \
+        #             " and stock_id = '601999' ".format(self.sql_start_date,self.date)
 
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
