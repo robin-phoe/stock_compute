@@ -138,6 +138,9 @@ class stock:
         return True
     #判断回撤幅度
     def jugement_retracement(self):
+        #高点是今天退出
+        if self.h_index_list[0] == 0:
+            return False
         if self.l_index_list[0] < self.h_index_list[0]:
             self.retra = (self.max_price - self.single_df.loc[self.l_index_list[0],'low_price'])/(self.max_price - self.min_price)
         else:
@@ -186,7 +189,7 @@ class stock_buffer:
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        self.clean_tab()
+        # self.clean_tab()
         self.select_info()
         self.save = pub_uti.save()
         for id in self.id_set:
@@ -202,16 +205,16 @@ class stock_buffer:
         sql = "delete from remen_retracement where trade_date = '{}'".format(self.date)
         pub_uti.commit_to_db(sql)
     def select_info(self):
-        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
-                    " FROM stock_trade_data " \
-                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
-                    " AND stock_id not like '300%' AND stock_id not like '688%' " \
-                    " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
-
         # trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
         #             " FROM stock_trade_data " \
         #             "where trade_date >= '{0}' and trade_date <= '{1}' " \
-        #             " and stock_id = '603088' ".format(self.sql_start_date,self.date)
+        #             " AND stock_id not like '300%' AND stock_id not like '688%' " \
+        #             " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
+
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,wave_data,point_type,turnover_rate,increase " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    " and stock_id = '601999' ".format(self.sql_start_date,self.date)
 
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
@@ -261,7 +264,7 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
-    date ='2021-06-01'#None#'2021-01-20'
+    date ='2021-05-26'#None#'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
     # history(start_date= '2021-01-01', end_date= '2021-06-24')
