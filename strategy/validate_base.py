@@ -7,6 +7,10 @@ import pandas as pd
 import datetime
 import re
 import pub_uti
+import mpl_finance
+import matplotlib.pyplot as plt
+from matplotlib import ticker
+import numpy as np
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -55,9 +59,9 @@ class validate_buffer:
             st_b = stock_buffer(vali_single_df,trade_single_df)
             self.result_df = st_b.commput(self.result_df)
         # print('result_df:',self.result_df)
-        self.result_df.to_csv(self.report_file_name,encoding='utf_8_sig')
+        self.result_df.to_csv(self.report_file_name,encoding='utf_8_sig',index=False)
     def create_reslut_df(self):
-        data = {'trade_date': [],'stock_id': [],'stock_name': [],'grade': [],'call_price': [],'low_inc_1': []
+        data = {'trade_code': [],'trade_date': [],'stock_id': [],'stock_name': [],'grade': [],'call_price': [],'low_inc_1': []
             , 'high_inc_1': [],'mod_inc_1': [],'low_inc_2': [],'high_inc_2': [],'mod_inc_2': [],'low_inc_3': [],
                 'high_inc_3': [],'mod_inc_3': []
                 }
@@ -74,7 +78,7 @@ class stock_buffer:
             st = stock(raw,self.trade_single_df)
             if not st.compute():
                 continue
-            raw_list = [st.trade_date,self.stock_id,self.stock_name,st.grade,st.call_price,
+            raw_list = [raw['trade_code'],st.trade_date,self.stock_id,self.stock_name,st.grade,st.call_price,
                         st.low_inc_1,st.high_inc_1,st.mod_inc_1,
                         st.low_inc_2,st.high_inc_2,st.mod_inc_2,
                         st.low_inc_3,st.high_inc_3,st.mod_inc_3]
@@ -154,6 +158,116 @@ class stock:
             return False
         return True
 
+"""
+改用web页面显示，图片绘制封存（未调通）
+"""
+# class draw_pic:
+#     def __init__(self):
+#         self.id = None
+#         self.name = None
+#         self.df = None
+#         # self.info_df = None
+#         self.image_path = None
+#         self.trade_date = None
+#         self.chart_title = None
+#         self.date_df = None
+#         self.select_df()
+#         self.single_df = None
+#
+#     def select_df(self):
+#         data_sql = "SELECT trade_date,open_price,close_price,high_price,low_price  " \
+#                    " FROM stock_trade_data " \
+#                    " where trade_date >= '2020-10-01'"
+#         self.df = pub_uti.creat_df(data_sql)
+#
+#     def create_single_df(self):
+#         self.single_df = self.df.loc[self.df.stock_id == self.id]
+#         self.single_df.reset_index(inplace=True)
+#         index_list = self.single_df[self.single_df.trade_date == self.trade_date].index.to_list()
+#         if len(index_list) == 1:
+#             end_index = index_list[0] - 3
+#         else:
+#             print('ERROR:index lengh has error.', index_list)
+#         if end_index < 0:
+#             end_index = 0
+#         self.single_df = self.single_df.iloc[end_index:]
+#         self.single_df.reset_index(inplace=True)
+#
+#     def draw_image(self, date, stock_id, name, chart_title,folder_name):
+#         self.id = stock_id
+#         self.name = name
+#         self.folder_name = folder_name
+#         self.chart_title = chart_title
+#         self.trade_date = date
+#         self.create_single_df()
+#         self.df['dates'] = np.arange(0, len(self.df))
+#         self.df['5'] = self.df['close_price'].rolling(5).mean()
+#
+#         def format_date(x, pos):
+#             if x < 0 or x > len(date_tickers) - 1:
+#                 return ''
+#             return date_tickers[int(x)]
+#
+#         date_tickers = self.df.trade_date.values
+#         plt.rcParams['font.sans-serif'] = ['KaiTi']
+#         plt.rcParams['axes.unicode_minus'] = False
+#         fig, ax = plt.subplots(figsize=(23, 5))
+#         ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_date))
+#         ax.set_title(chart_title, fontsize=20)
+#         # 绘制K线图
+#         mpl_finance.candlestick_ochl(
+#             ax=ax,
+#             quotes=self.df[['dates', 'open_price', 'close_price', 'high_price', 'low_price']].values,
+#             width=0.7,
+#             colorup='r',
+#             colordown='g',
+#             alpha=0.7)
+#         # plt.plot(self.df['dates'], self.df['5'])
+#         # zhuang_section = self.info_df.loc[0,'zhuang_section']
+#         # # print('zhuang_section:', zhuang_section)
+#         # try:
+#         #     zhuang_section = eval(zhuang_section)
+#         # except Exception as err:
+#         #     if zhuang_section == None:
+#         #         zhuang_section = []
+#         #     logging.error('ERR:{} zhuang_section:{},df:{}'.format(err,zhuang_section,self.info_df))
+#         #     print('ERR:{} zhuang_section:{},df:{}'.format(err,zhuang_section,self.info_df))
+#         # for zhaung_tup in zhuang_section:
+#         #     sta = self.__comput_ind(zhaung_tup[1])
+#         #     end = self.__comput_ind(zhaung_tup[0])
+#         #     print('indexs:', sta, end)
+#         #     plt.plot(self.df['dates'][sta:end], self.df['5'][sta:end], color='green')
+#         plt.legend();
+#
+#         # self.image_path = '../pic/{0}{1}{2}{3}.jpg'.format(stock.stock_id, stock.stock_name, self.to_day, stock.inform_type)
+#         self.image_path = './validate_report/{0}/{1}.jpg'.format(self.folder_name,self.chart_title)
+#         plt.savefig(self.image_path)
+# class pic_buffer:
+#     def __init__(self):
+#         self.csv_name = './validate_report/validate_retacement.csv'
+#         self.df = None
+#         self.grade_start = -0.05
+#         self.grade_end = 0
+#         self.df = pd.read_csv(self.csv_name)
+#         self.folder_name = 'negative_5'
+#     def target_df(self):
+#         target_df = self.df.loc[self.grade_start < self.df.mod_inc_1 ]
+#         target_df = target_df.loc[self.df.mod_inc_1<= self.grade_end]
+#         dp = draw_pic()
+#         for inx,raw in target_df.iterrows():
+#             chart_title = "{0}_{1}_{2}_{3}".format(raw['stock_id'],raw['stock_name'],raw['grade'],raw['trade_date'])
+#             dp.draw_image(date, raw['stock_id'], raw['stock_name'], chart_title, self.folder_name)
+"""
+图片绘制end
+"""
+class save_result:
+    def __init__(self):
+        self.csv_name = './validate_report/validate_retacement.csv'
+        self.df = None
+        self.df = pd.read_csv(self.csv_name)
+        print('df:',self.df.head(100))
+    def save(self):
+        pub_uti.df_to_mysql('validate_retracement',self.df)
 
 
 # def get_df_from_db(sql, db):
@@ -317,6 +431,8 @@ class stock:
 if __name__ == '__main__':
     date = '2021-04-14'
     # main(date)
-    vali = validate_buffer(vali_start = '2021-01-01',vali_end='2021-06-20')
-    vali.com()
+    # vali = validate_buffer(vali_start = '2021-01-01',vali_end='2021-06-20')
+    # vali.com()
+    sr = save_result()
+    sr.save()
     print('completed.')

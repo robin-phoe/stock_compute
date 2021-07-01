@@ -6,6 +6,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
 import logging
+from sqlalchemy import create_engine
 """
 【功能】创建db
 """
@@ -102,3 +103,23 @@ class save:
             print('存储失败:', err)
             logging.error('存储失败:{}'.format(err))
         self.cursor.close()
+"""
+【功能】df存储到mysql
+"""
+class df_to_db:
+    def __init__(self):
+        db_config = read_config('db_config')
+        host=db_config["host"],
+        user=db_config["user"],
+        password=db_config["password"],
+        database=db_config["database"]
+        self.conf = "mysql+pymysql://{user}:{password}@{host}:3306/{database}".format(
+            user = user,password =password,host = host,database = database
+        )
+        self.conf = "mysql+pymysql://user1:Zzl08382020@192.168.1.6:3306/stockdb"
+        self.engine = create_engine(self.conf)
+    def df_to_mysql(self,table,df):
+        print('conf:', self.conf)
+        df.to_sql(name=table,con=self.engine,if_exists='append')
+dd = df_to_db()
+df_to_mysql = dd.df_to_mysql
