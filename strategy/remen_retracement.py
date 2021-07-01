@@ -17,6 +17,7 @@ from readconfig import read_config
 import pub_uti
 
 
+
 #显示所有列
 pd.set_option('display.max_columns', None)
 #显示所有行
@@ -129,8 +130,9 @@ class stock:
         turnover_rate_sum = sum(turnover_rate_list[self.inc_range[1]:self.inc_range[0]])
         per_rate = turnover_rate_sum / (self.inc_range[0] - self.inc_range[1])
         print('turnover:', per_rate)
-        if per_rate < 3:
-            return False
+        #发现603633上升前平缓段被纳入上升区间，日均换手被拉低。暂时放弃拉升区间日均换手限定
+        # if per_rate < 3:
+        #     return False
         #热门分数(回撤部分换手)
         turnover_sum = sum(turnover_rate_list[0:self.inc_range[1]+1])
         if turnover_sum >= 30:
