@@ -114,6 +114,6 @@ def get_history(start, end):
 
 
 if __name__ == "__main__":
-    date = '2021-06-30'#None  # '2020-12-11'
+    date = None  # '2020-12-11'
     get_longhu(date)
     # get_history('2020-12-29', '2021-04-12')
