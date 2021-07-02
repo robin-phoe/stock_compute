@@ -253,7 +253,7 @@ class wx_send_message:
     def send_message(self,message,image_path,monitor_type):
         # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
         if monitor_type in self.receiver_dic:
-            my_groups = self.bot.friends().search(self.receiver_dic[monitor_type])[0]
+            my_groups = self.bot.groups().search(self.receiver_dic[monitor_type])[0]
             # my_groups = self.bot.groups().search(u'有赚就行')[0]
         else:
             # my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
