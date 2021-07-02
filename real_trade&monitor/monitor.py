@@ -249,10 +249,11 @@ class bk_buffer:
 class wx_send_message:
     def __init__(self):
         self.bot = Bot(cache_path=True)
+        self.receiver_dic = {'remen_xiaoboxin':u'热门小波形','zhuang':u'庄线','single_limit_retra':u'单涨停回撤','remen_boxin':u'热门波形','remen_retra':u'热门回撤',}
     def send_message(self,message,image_path,monitor_type):
         # print('group:',bot.groups(),bot.groups().search(u'有赚就行'))
-        if monitor_type in ['remen_xiaoboxin',]:
-            my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
+        if monitor_type in self.receiver_dic:
+            my_groups = self.bot.groups().search(self.receiver_dic[monitor_type])[0]
             # my_groups = self.bot.groups().search(u'有赚就行')[0]
         else:
             # my_groups = self.bot.friends().search(u'7个涨停翻一番')[0]
