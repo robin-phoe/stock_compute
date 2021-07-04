@@ -30,8 +30,8 @@ class validate_buffer:
         self.vali_range_day = 10
         self.trade_date_start = self.vali_start
         self.trade_date_end = datetime.datetime.strptime(self.vali_end , '%Y-%m-%d') + datetime.timedelta(days = self.vali_range_day+1)
-        self.report_file_name = './validate_report/validate_retacement.xlsx'
-        self.vali_table = 'remen_retracement'
+        self.report_file_name = './validate_report/validate_limit_up.xlsx'
+        self.vali_table = 'limit_up_single'
         self.grade = 10001
     def com(self):
         self.get_trade_date()
@@ -58,7 +58,7 @@ class validate_buffer:
             trade_single_df.reset_index(inplace=True)
             st_b = stock_buffer(vali_single_df,trade_single_df)
             self.result_df = st_b.commput(self.result_df)
-        # print('result_df:',self.result_df)
+        print('result_df:',self.result_df['stock_id'][0:20])
         # self.result_df.to_csv(self.report_file_name,encoding='utf_8_sig',index=False)
         writer = pd.ExcelWriter(self.report_file_name)
         self.result_df.to_excel(writer, encoding='utf_8_sig', index=False)
@@ -265,12 +265,13 @@ class stock:
 """
 class save_result:
     def __init__(self):
-        self.csv_name = './validate_report/validate_retacement.xlsx'
+        self.csv_name = './validate_report/validate_limit_up.xlsx'
         self.df = None
         self.df = pd.read_excel(self.csv_name,dtype={'stock_id':str})
         print('df:',self.df.head(100))
     def save(self):
-        pub_uti.df_to_mysql('validate_retracement',self.df)
+        pub_uti.df_to_mysql('validate_limit_up',self.df)
+
 
 
 if __name__ == '__main__':

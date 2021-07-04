@@ -52,6 +52,8 @@ class stock:
         self.stabilize_grade = 0
         self.turnover_grade = 0
     def compute(self):
+        if not self.jugement_lastday_inc():
+            return False
         if not self.jugement_last_inc():
             return False
         if not self.jugement_turnover():
@@ -72,6 +74,11 @@ class stock:
                                                                                            self.retra_grade,
                                                                                             self.id))
         return True
+    #判断最后一日涨幅
+    def jugement_lastday_inc(self):
+        if self.single_df.loc[0,'increase'] >= 5:
+            print('最后日涨幅大于5%。')
+            return False
     # 判断热门(涨幅)
     def jugement_last_inc(self):
         def compare_price(first_p,second_p):
