@@ -143,7 +143,10 @@ class stock_buffer:
         if len(single_df) < 30 :
             return
         # single_df = single_df.head(10)
+        # i1 = single_df['increase']
+        single_df['flag'] = 0
         single_df['flag'] = single_df['increase'].apply(lambda x: 1 if x>=9.75 else 0)
+        # i2 = single_df['increase']
         flag_list = single_df['flag'].to_list()[0:10]
         if sum(flag_list) > 2 or sum(flag_list) == 0:
             return
@@ -180,7 +183,7 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
-    st_buff = stock_buffer(date)
-    st_buff.init_buffer()
-    # history(start_date= '2021-01-01', end_date= '2021-06-14')
+    # st_buff = stock_buffer(date)
+    # st_buff.init_buffer()
+    history(start_date= '2021-01-01', end_date= '2021-06-30')
     print('completed.')
