@@ -79,6 +79,7 @@ class stock:
         if self.single_df.loc[0,'increase'] >= 5:
             print('最后日涨幅大于5%。')
             return False
+        return True
     # 判断热门(涨幅)
     def jugement_last_inc(self):
         def compare_price(first_p,second_p):
@@ -273,8 +274,8 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
-    date =None#'2021-01-20'
+    date ='2021-07-02'#None#'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
-    # history(start_date= '2021-01-01', end_date= '2021-06-24')
-    print(datetime.datetime.now() - start_time)
+    # history(start_date= '2021-01-01', end_date= '2021-07-02')
+    # print(datetime.datetime.now() - start_time)
