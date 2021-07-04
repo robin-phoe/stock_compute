@@ -31,7 +31,7 @@ class stock:
         self.id = id
         self.single_df = single_df #时间倒序
         self.date = date
-        self.grade = 0
+        self.grade = 0 #20000+ 表示尾盘可以进入。10000+，
         self.low_standard = 1.03
         self.after_inc = 0
         self.before_inc = 0
@@ -43,30 +43,15 @@ class stock:
         self.trade_code = re.sub('-', '', self.date) + self.id
         self.single_limit = 0
         self.after_day = 0
+        self.last_price = 0
         self.stop = False
     def compute(self):
-        count = 0
-        for i in range(len(self.single_df)):
-            if not self.limit_up_flag:
-                if self.single_df.loc[i,'flag'] == 1:
-                    if i == 0:
-                        self.stop = True
-                        return
-                    self.limit_up_flag = True
-                    continue
-                if self.single_df.loc[i,'increase'] >= 5:
-                    self.stop = True
-                    return
-                self.after_inc += self.single_df.loc[i,'increase']
-                self.after_inc_abs += abs(self.single_df.loc[i, 'increase'])
-            else:
-                if count >= self.before_days:
-                    break
-                self.before_inc += self.single_df.loc[i,'increase']
-                self.before_inc_abs += abs(self.single_df.loc[i, 'increase'])
-                count += 1
+        if not self.com_inc():
+            return
         self.count_limit_up()
+        self.com_last_price()
         self.com_grade()
+
     def com_grade(self):
         #万：(20000:1个涨停，10000：2个连续涨停)
         #千：(2000:涨停第二日开收盘价低于前日涨停价格，1000：开收盘价格低于3%，else：0)
@@ -76,26 +61,61 @@ class stock:
             return
         if self.after_inc > 3:
             return
-        self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100
+        self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100 + self.last_price
+    def com_inc(self):
+        count = 0
+        for i in range(len(self.single_df)):
+            #判断在涨停后区间
+            if not self.limit_up_flag:
+                if self.single_df.loc[i,'flag'] == 1 :
+                    # 涨停在最后一日，退出
+                    if i == 0:
+                        self.stop = True
+                        return False
+                    #比较后一日价格与涨停日收盘价
+                    self.com_price(i)
+                    self.limit_up_flag = True
+                    continue
+                #期间一日涨幅大于5，退出
+                if self.single_df.loc[i,'increase'] >= 5:
+                    self.stop = True
+                    return False
+                self.after_inc += self.single_df.loc[i,'increase']
+                self.after_inc_abs += abs(self.single_df.loc[i, 'increase'])
+            else:
+                if count >= self.before_days:
+                    break
+                self.before_inc += self.single_df.loc[i,'increase']
+                self.before_inc_abs += abs(self.single_df.loc[i, 'increase'])
+                count += 1
+        return True
+    #计算十日内有几个涨停
     def count_limit_up(self):
         limit_up_df = self.single_df.head(10)
         flag_index_list = limit_up_df[limit_up_df.flag == 1].index.to_list()
         if len(flag_index_list) == 1:
-            self.single_limit = 20000
+            self.single_limit = 15000
         else:
             if abs(flag_index_list[0] - flag_index_list[1]) == 1:
                 self.single_limit = 10000
             else:
-                self.single_limit = 20000
+                self.single_limit = 15000
     #涨停第二日开收盘价与前日涨停价格比照
     def com_price(self,i):
         limit_c_price = self.single_df.loc[i,'close_price']
-        if i == 0:
-            self.after_day = 0
+        #第二日开收盘价都低于涨停日收盘价
         if self.single_df.loc[i-1,'close_price'] <= limit_c_price and self.single_df.loc[i-1,'open_price'] <= limit_c_price:
-            self.after_day = 2000
+            self.after_day = 5000
+        #第二日开收盘价都低于涨停日收盘价*1.03
         elif self.single_df.loc[i-1,'close_price'] <= limit_c_price*1.03 and self.single_df.loc[i-1,'open_price'] <= limit_c_price*1.03:
             self.after_day = 1000
+    #判断是否企稳
+    def com_last_price(self):
+        #涨停后一日企稳不在范围内
+        if self.single_df.loc[1,'flag'] == 1 :
+            return
+        if -1 <= self.single_df.loc[1,'increase'] <= 3:
+            self.last_price = 10000
 
 class stock_buffer:
     def __init__(self,date = None):
@@ -125,7 +145,7 @@ class stock_buffer:
         sql = "delete from limit_up_single where trade_date = '{}'".format(self.date)
         pub_uti.commit_to_db(sql)
     def select_info(self):
-        trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,increase " \
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,increase " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
@@ -164,6 +184,7 @@ class stock_buffer:
 
 
 '''
+
 计算历史指定日期情况（用于验证）
 '''
 def history(start_date,end_date):
