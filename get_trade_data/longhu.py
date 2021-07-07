@@ -1,7 +1,4 @@
-'''
-数据来源：东方财富网-行情中心
-http://quote.eastmoney.com/center
-'''
+
 # coding=utf-8
 import requests
 import re
@@ -21,7 +18,7 @@ def make_date(date):
     if date == None:
         date = datetime.datetime.now().strftime("%Y-%m-%d")
     return date
-def get_longhu(date):
+def main(date):
     '''
     "000592|平潭发展|3.71|-6.3131|17.887|-49077912.18|1271330513|342340897|日跌幅偏离值达到7%的前5只证券|4024193|123658876.18|74580964|198239840.18|2021-05-25|-3.86|15.59||||||||||||||||||32.49999999|55.23012554|25.76271182|64.88888889|||||||1家机构卖出，成功率40.67%"
     {0: '000592', 1: '平潭发展', 2: '3.71', 3: '-6.3131', 4: '17.887', 5: '-49077912.18', 6: '1271330513', 7: '342340897',
@@ -110,10 +107,10 @@ def get_history(start, end):
         print('date_str', date_str)
         date_list.append(date_str)
     for date in date_list:
-        get_longhu(date)
+        main(date)
 
 
 if __name__ == "__main__":
     date = None  # '2020-12-11'
-    get_longhu(date)
+    main(date)
     # get_history('2020-12-29', '2021-04-12')

@@ -1,11 +1,3 @@
-
-
-
-
-'''
-数据来源：东方财富网-行情中心
-http://quote.eastmoney.com/center
-'''
 #coding=utf-8
 import requests
 import re
@@ -16,7 +8,7 @@ import json
 import datetime
 logging.basicConfig(level=logging.DEBUG, filename='../log/stock_day_trade1.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
-db = pymysql.connect(host="localhost", user="root", password="Zzl08382020", database="stockdb")
+db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
 cursor = db.cursor()
 count=0
 
@@ -73,6 +65,7 @@ def main(date):
     while flag:
         flag = getOnePageStock(str(page),date)
         page = int(page) + 1
+    print('交易数据获取完成。')
 if __name__ == '__main__':
     date = None#'%Y%m%d'
     main(date)
