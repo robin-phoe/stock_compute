@@ -60,6 +60,12 @@ def fill_stock(stock_dict):
                 d(resourceId="cn.com.sina.finance:id/EditText_Search_Input").click()
                 # sleep(1)
                 #输入id 优化：id前需要加上SZ SH
+                if id[0] == '0' or id[0] == '3':
+                    id = 'SZ' + id
+                elif id[0] == '6':
+                    id = 'SH'+id
+                else:
+                    print('ERROR id:',id)
                 d.send_keys(id, clear=True)
                 sleep(0.5)
                 #点击自选 复时按钮为编辑
