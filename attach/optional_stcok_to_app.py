@@ -16,10 +16,13 @@ def init():
     # sleep(5)
     # 启动沉睡
     #关闭广告（可能没有）
-    try:
-        d(resourceId="cn.com.sina.finance:id/acCloseIv").click()
-    except:
-        pass
+    # try:
+    #     d(resourceId="cn.com.sina.finance:id/acCloseIv").click()
+    # except:
+    #     pass
+    win_clo = d(resourceId="cn.com.sina.finance:id/acCloseIv")
+    if win_clo:
+        win_clo.click()
     #进入自选
     d(resourceId="cn.com.sina.finance:id/tab_item_tv", text="自选").click()
     #下拉自选列表
@@ -67,12 +70,20 @@ def fill_stock(stock_dict):
                 else:
                     print('ERROR id:',id)
                 d.send_keys(id, clear=True)
-                sleep(0.5)
+                sleep(0.3)
                 #点击自选 复时按钮为编辑
                 try:
                     d.xpath('//*[@resource-id="cn.com.sina.finance:id/search_all_stock_list"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]/android.widget.FrameLayout[1]/android.widget.TextView[1]').click()
                 except:
-                    d(resourceId="cn.com.sina.finance:id/SearchStockItem_Edit").click()
+                    try:
+                        #单个自选的形式
+                        print('button flag1')
+                        d(resourceId="cn.com.sina.finance:id/SearchStockItem_AddOptional").click()
+                    except:
+                        #编辑按钮
+                        print('button flag2')
+                        d(resourceId="cn.com.sina.finance:id/SearchStockItem_Edit").click()
+                sleep(0.2)
                 #选择分组
                 d(resourceId="cn.com.sina.finance:id/tv_stock_group", text=group).click()
                 sleep(0.3)
@@ -106,5 +117,5 @@ def main(date):
     fill_stock(stock_dict)
     print('completed.')
 if __name__ == '__main__':
-    date = None
+    date ='2021-07-08'# None
     main(date)
