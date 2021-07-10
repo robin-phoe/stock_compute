@@ -21,11 +21,11 @@ db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db
 table_dict = {}
 table_code = {'zhuang':'1','remen_xiaoboxin':'2','remen_xiaoboxin_c':'3','remen_boxin':'4','remen_retra':'5','single_limit_retra':'6'}
 def creat_sql(trade_date):
-    table_dict['zhuang'] = 'SELECT stock_id,stock_name,zhuang_grade as grade,"zhuang" ' \
-                           'FROM com_zhuang ' \
-                           'WHERE zhuang_grade >= 1000 AND zhuang_grade <10000  AND lasheng_flag = 0 ' \
-                           ' AND monitor = 1 AND stock_id not like "688%" ' \
-                           ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" '
+    # table_dict['zhuang'] = 'SELECT stock_id,stock_name,zhuang_grade as grade,"zhuang" ' \
+    #                        'FROM com_zhuang ' \
+    #                        'WHERE zhuang_grade >= 1000 AND zhuang_grade <10000  AND lasheng_flag = 0 ' \
+    #                        ' AND monitor = 1 AND stock_id not like "688%" ' \
+    #                        ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" '
     table_dict['remen_xiaoboxin'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin" ' \
                                    'FROM remen_xiaoboxin ' \
                                    'WHERE trade_date = "{0}"  AND monitor = 1 AND stock_id not like "688%" ' \
@@ -36,11 +36,11 @@ def creat_sql(trade_date):
     #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
     #                                  ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
     #                                  ''.format(trade_date)
-    table_dict['remen_boxin'] ='SELECT stock_id,stock_name,grade,"remen_boxin" ' \
-                                   'FROM remen_boxin ' \
-                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
-                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
-                                     ''.format(trade_date)
+    # table_dict['remen_boxin'] ='SELECT stock_id,stock_name,grade,"remen_boxin" ' \
+    #                                'FROM remen_boxin ' \
+    #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
+    #                                  ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
+    #                                  ''.format(trade_date)
     table_dict['remen_retra'] ='SELECT stock_id,stock_name,grade,"remen_retra" ' \
                                    'FROM remen_retracement ' \
                                    'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
@@ -48,7 +48,7 @@ def creat_sql(trade_date):
                                      ''.format(trade_date)
     table_dict['single_limit_retra'] ='SELECT stock_id,stock_name,grade,"single_limit_retra" ' \
                                    'FROM limit_up_single ' \
-                                   'WHERE trade_date = "{0}"   AND grade > 10000 AND stock_id not like "688%" ' \
+                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
                                      ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
                                      ''.format(trade_date)
 def sel_lastest_day():
