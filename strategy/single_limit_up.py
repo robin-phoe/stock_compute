@@ -77,7 +77,7 @@ class stock:
                     self.limit_up_flag = True
                     continue
                 #期间一日涨幅大于5，退出
-                if self.single_df.loc[i,'increase'] >= 5:
+                if self.single_df.loc[i,'increase'] >= 4:
                     self.stop = True
                     return False
                 self.after_inc += self.single_df.loc[i,'increase']
