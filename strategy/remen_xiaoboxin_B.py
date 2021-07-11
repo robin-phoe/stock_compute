@@ -25,6 +25,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
+import pub_uti
 
 #显示所有列
 pd.set_option('display.max_columns', None)
@@ -164,7 +165,8 @@ def save(db,df):
     cursor.close()
 def main(date):
     if date == None:
-        date = datetime.datetime.now().strftime('%Y-%m-%d')
+        sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
+        date = pub_uti.select_from_db(sql=sql)[0][0]
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     # day_delta = 40
