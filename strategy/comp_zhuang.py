@@ -166,7 +166,7 @@ def save(db, ids, stock_name,zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg
     try:
         print('zhuang_grade:', zhuang_grade)
 
-        sql = "insert into com_zhuang0427(stock_id,stock_name,zhuang_grade,zhuang_section,yidong,zhuang_long,max_avg_rate,lasheng_flag) \
+        sql = "insert into com_zhuang(stock_id,stock_name,zhuang_grade,zhuang_section,yidong,zhuang_long,max_avg_rate,lasheng_flag) \
             values('{0}','{1}','{2}',\"{3}\",\"{4}\",'{5}','{6}','{7}') " \
               "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',zhuang_grade='{2}',zhuang_section=\"{3}\"," \
               "yidong=\"{4}\",zhuang_long = '{5}' ,max_avg_rate = '{6}',lasheng_flag='{7}' \
@@ -227,9 +227,9 @@ def run(start_t, end_t):
 if __name__ == '__main__':
     start_t = None#'2020-01-01'
     end_t = None#'2021-01-14'
-    print('time1:',datetime.datetime.now().strftime('%H:%M:%S'))
+    start_time = datetime.datetime.now()
 
     # h_tab = 9
     # main(h_tab, start_t, end_t)
     run(start_t, end_t)
-    print('time2:', datetime.datetime.now().strftime('%H:%M:%S'))
+    print('耗时:', datetime.datetime.now() - start_time)

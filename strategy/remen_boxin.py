@@ -171,7 +171,9 @@ class stock_buffer:
     def select_info(self):
         trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type " \
                     " FROM stock_trade_data " \
-                    "where trade_date >= '{0}' and trade_date <= '{1}' ".format(self.sql_start_date,self.date)
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
+                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%'".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)

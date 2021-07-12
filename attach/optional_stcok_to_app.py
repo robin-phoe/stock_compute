@@ -85,6 +85,9 @@ def fill_stock(stock_dict):
                         d(resourceId="cn.com.sina.finance:id/SearchStockItem_Edit").click()
                 sleep(0.2)
                 #选择分组
+                if group == '波形':
+                    sleep(0.2)
+                    d.swipe(0.6,0.75,0.6,0.65)
                 d(resourceId="cn.com.sina.finance:id/tv_stock_group", text=group).click()
                 sleep(0.3)
                 #点击确定
@@ -107,7 +110,7 @@ def sel_data_from_db(date):
         stock_dict[type_dic[type]] = []
     df = pub_uti.creat_df(sql= sql)
     df.apply(lambda raw:stock_dict[type_dic[raw['monitor_type']]].append(raw['stock_id']),axis = 1)
-    print(stock_dict)
+    print(len(stock_dict),stock_dict)
 
 
     return stock_dict
@@ -117,5 +120,5 @@ def main(date):
     fill_stock(stock_dict)
     print('completed.')
 if __name__ == '__main__':
-    date ='2021-07-08'# None
+    date =None
     main(date)
