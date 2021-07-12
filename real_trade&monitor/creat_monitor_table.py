@@ -36,11 +36,11 @@ def creat_sql(trade_date):
     #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
     #                                  ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
     #                                  ''.format(trade_date)
-    # table_dict['remen_boxin'] ='SELECT stock_id,stock_name,grade,"remen_boxin" ' \
-    #                                'FROM remen_boxin ' \
-    #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
-    #                                  ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
-    #                                  ''.format(trade_date)
+    table_dict['remen_boxin'] ='SELECT stock_id,stock_name,grade,"remen_boxin" ' \
+                                   'FROM remen_boxin ' \
+                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
+                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
+                                     ''.format(trade_date)
     table_dict['remen_retra'] ='SELECT stock_id,stock_name,grade,"remen_retra" ' \
                                    'FROM remen_retracement ' \
                                    'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
