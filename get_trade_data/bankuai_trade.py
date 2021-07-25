@@ -27,7 +27,7 @@ bk_dict = {}
 """获取单个板块历史数据"""
 def get_history():
     cursor = db.cursor()
-    sql ="select distinct bankuai_code,bankuai_name from bankuai_day_data"
+    sql ="select distinct bk_code,bk_name from bankuai_day_data"
     cursor.execute(sql)
     bankuai_info = cursor.fetchall()
     print('bankuai_info:',bankuai_info)
@@ -57,10 +57,10 @@ def get_history():
             print('day_data',day_data,bk_id)
             # increase = day_data[1]/day_data[2] - 1
             try:
-                sql="insert into bankuai_day_data(bankuai_id,bankuai_name,bankuai_code,trade_date,open_price,close_price," \
+                sql="insert into bankuai_day_data(bk_id,bk_name,bk_code,trade_date,open_price,close_price," \
                     "high_price,low_price,amount,amount_money,zhenfu) " \
                     "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}')" \
-                    "ON DUPLICATE KEY UPDATE bankuai_id='{0}',bankuai_name='{1}',bankuai_code='{2}',trade_date='{3}'," \
+                    "ON DUPLICATE KEY UPDATE bk_id='{0}',bk_name='{1}',bk_code='{2}',trade_date='{3}'," \
                     "open_price='{4}',close_price='{5}',high_price='{6}',low_price='{7}'," \
                     "amount='{8}',amount_money='{9}',zhenfu='{10}'" \
                     .format(bk_id,bk_dict[bk],bk,day_data[0],day_data[1],day_data[2],day_data[3],
@@ -74,7 +74,7 @@ def get_history():
                 logging.error('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
                 print('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
     cursor.close()
-def com_his_rank(start_date = '2020-01-01',end_date = '2021-05-15'):
+def com_his_rank(start_date = '2020-05-15',end_date = '2021-07-16'):
     global bk_dict
     cursor = db.cursor()
     datestart = datetime.datetime.strptime(start_date, '%Y-%m-%d')
@@ -86,7 +86,7 @@ def com_his_rank(start_date = '2020-01-01',end_date = '2021-05-15'):
         print('date_str',date_str)
         date_list.append(date_str)
     for date in date_list:
-        sql = "select bankuai_id,(close_price/open_price-1) as increase from bankuai_day_data where trade_date = '{}'".format(date)
+        sql = "select bk_id,(close_price/open_price-1) as increase from bankuai_day_data where trade_date = '{}'".format(date)
         cursor.execute(sql)
         bk_dict = dict(cursor.fetchall())
         print('bk_dict:',bk_dict)
@@ -113,19 +113,19 @@ def getOnePageStock(page,date_str):
         Data_json = json.loads(result[0])
     for data in Data_json:
         print('data:',data)
-        bankuai_id=date_str+data['f12']
-        print(bankuai_id)
-        bk_dict[bankuai_id]=data['f3']
+        bk_id=date_str+data['f12']
+        print(bk_id)
+        bk_dict[bk_id]=data['f3']
         try:
-            sql="insert into bankuai_day_data(bankuai_id,bankuai_name,bankuai_code,trade_date,open_price,close_price," \
+            sql="insert into bankuai_day_data(bk_id,bk_name,bk_code,trade_date,open_price,close_price," \
                 "high_price,low_price,amount,amount_money,increase,turnover_rate,lingzhang,lingzhang_zhangfu," \
                 "shangzhang_jiashu,xiadie_jiashu) " \
                 "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}','{14}','{15}')" \
-                "ON DUPLICATE KEY UPDATE bankuai_id='{0}',bankuai_name='{1}',bankuai_code='{2}',trade_date='{3}'," \
+                "ON DUPLICATE KEY UPDATE bk_id='{0}',bk_name='{1}',bk_code='{2}',trade_date='{3}'," \
                 "open_price='{4}',close_price='{5}',high_price='{6}',low_price='{7}'," \
                 "amount='{8}',amount_money='{9}',increase='{10}',turnover_rate='{11}',lingzhang='{12}',lingzhang_zhangfu='{13}'," \
                 "shangzhang_jiashu='{14}',xiadie_jiashu='{15}'" \
-                .format(bankuai_id,data['f14'],data['f12'],date_str,data['f17'],data['f2'],data['f15'],
+                .format(bk_id,data['f14'],data['f12'],date_str,data['f17'],data['f2'],data['f15'],
                         data['f16'],data['f5'],data['f6'],data['f3'],data['f8'],data['f128'],
                         data['f136'],data['f104'],data['f105'])
             cursor.execute(sql)
@@ -152,9 +152,9 @@ def save_sort():
         redu  = 1/rank
         rank += 1
         try:
-            sql = "insert into bankuai_day_data(bankuai_id,redu) " \
+            sql = "insert into bankuai_day_data(bk_id,redu) " \
                   "values('{0}','{1}')" \
-                  "ON DUPLICATE KEY UPDATE bankuai_id='{0}',redu='{1}'" \
+                  "ON DUPLICATE KEY UPDATE bk_id='{0}',redu='{1}'" \
                 .format(bk_id,redu)
             cursor.execute(sql)
             db.commit()
@@ -178,8 +178,8 @@ def main(date):
     save_sort()
 if __name__ == '__main__':
     date = None
-    # main(date)
-    get_history()
-    com_his_rank(start_date='2020-12-20', end_date='2020-12-29')
+    main(date)
+    # get_history()
+    # com_his_rank(start_date='2021-05-15', end_date='2021-07-16')
     # print('completed!')
 
