@@ -104,15 +104,19 @@ class stock:
         self.low_inc_3 = None
         self.high_inc_3 = None
         self.mod_inc_3 = None
+        self.index = None
     def compute(self,):
         print('日期：', self.trade_date)
         if self.raw['grade'] >= 20000:
+            print('flag1', self.index)
             if not self.com_close():
                 return False
         elif self.raw['grade'] >= 10000:
+            print('flag2', self.index)
             if not self.com_in():
                 return False
         else:
+            print('flag3',self.index)
             return False
         self.low_inc_1 = self.trade_single_df.loc[self.index-1,'low_price']/self.call_price -1
         self.high_inc_1 = self.trade_single_df.loc[self.index-1, 'high_price']/self.call_price -1
@@ -134,6 +138,10 @@ class stock:
         if len(self.trade_single_df) <= self.index + 4:
             logging.error('{} 交易记录长度不够:{}'.format(self.raw['stock_id'],self.trade_date))
             print('{} 交易记录长度不够:{}'.format(self.raw['stock_id'],self.trade_date))
+            return False
+        if self.index < 4:
+            logging.error('{} 索引超过下限:{},{}'.format(self.raw['stock_id'], self.trade_date,index_list))
+            print('{} 索引超过下限:{}'.format(self.raw['stock_id'], self.trade_date))
             return False
         self.call_price = self.trade_single_df.loc[self.index, 'close_price']
         return True
@@ -277,8 +285,8 @@ class save_result:
 if __name__ == '__main__':
     date = '2021-04-14'
     # main(date)
-    # vali = validate_buffer(vali_start = '2021-01-01',vali_end='2021-06-20')
-    # vali.com()
-    sr = save_result()
-    sr.save()
+    vali = validate_buffer(vali_start = '2021-06-20',vali_end='2021-08-17')
+    vali.com()
+    # sr = save_result()
+    # sr.save()
     print('completed.')
