@@ -57,9 +57,13 @@ class stock:
         #千：(2000:涨停第二日开收盘价低于前日涨停价格，1000：开收盘价格低于3%，else：0)
         #百：(abs(int(after_inc))*100)
         print('前斜率：{}{}'.format(self.before_inc,self.before_inc_abs))
-        if self.before_inc > 5 or self.before_inc < -5 or self.before_inc_abs > 15:
+        # if self.before_inc > 5 or self.before_inc < -5 or self.before_inc_abs > 15:
+        #     return
+        if self.before_inc > 10:
             return
-        if self.after_inc > 3:
+        if self.after_inc > 5:
+            return
+        if not self.validate_redu():
             return
         self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100 + self.last_price
     def com_inc(self):
@@ -116,7 +120,13 @@ class stock:
             return
         if -1 <= self.single_df.loc[1,'increase'] <= 3:
             self.last_price = 10000
-
+    #热度判断，15日换手率日均大于2.5%则过高
+    def validate_redu(self):
+        arg_rate = self.single_df['turnover_rate'][0:15].mean()
+        print("arg_rate:",arg_rate)
+        if arg_rate >=2.5:
+            return False
+        return True
 class stock_buffer:
     def __init__(self,date = None):
         self.stock_buffer = {}
@@ -143,9 +153,10 @@ class stock_buffer:
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
     def clean_tab(self):
         sql = "delete from limit_up_single where trade_date = '{}'".format(self.date)
+        print('清除完成。')
         pub_uti.commit_to_db(sql)
     def select_info(self):
-        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,increase " \
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,increase,turnover_rate " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
@@ -181,8 +192,6 @@ class stock_buffer:
         self.save.add_sql(sql)
     def get_stock(self,id):
         pass
-
-
 '''
 
 计算历史指定日期情况（用于验证）
@@ -206,5 +215,5 @@ if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
-    # history(start_date= '2021-01-01', end_date= '2021-06-30')
+    # history(start_date= '2021-06-20', end_date= '2021-08-17')
     print('completed.')
