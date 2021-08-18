@@ -187,7 +187,7 @@ if __name__ == '__main__':
             r.flushdb()
             print('已清空redis')
             flush_flag = 0
-        elif time_now >= "09:26:00" and time_now <= "15:30:00" :#
+        elif time_now >= "09:24:00" and time_now <= "15:30:00" :#
             time1 = datetime.datetime.now()
             # main()
             run()
