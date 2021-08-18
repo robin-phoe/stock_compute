@@ -189,6 +189,6 @@ def main(update_flag = 0):
 
 
 if __name__ == '__main__':
-    main(update_flag = 2)
+    main(update_flag = 1)
 
 

@@ -100,8 +100,8 @@ class save_result:
 if __name__ == '__main__':
     start_time = datetime.datetime.now()
     date =None#'2021-01-20'
-    # st_buff = stock_remdu()
-    # st_buff.run()
+    st_buff = stock_remdu()
+    st_buff.run()
     sr = save_result()
     sr.save()
     # history(start_date= '2021-01-01', end_date= '2021-07-02')

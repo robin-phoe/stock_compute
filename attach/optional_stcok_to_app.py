@@ -111,12 +111,14 @@ def sel_data_from_db(date):
     df = pub_uti.creat_df(sql= sql)
     df.apply(lambda raw:stock_dict[type_dic[raw['monitor_type']]].append(raw['stock_id']),axis = 1)
     print(len(stock_dict),stock_dict)
+    for key in stock_dict:
+        print(key,len(stock_dict[key]))
 
 
     return stock_dict
 def main(date):
-    init()
     stock_dict = sel_data_from_db(date)
+    init()
     fill_stock(stock_dict)
     print('completed.')
 if __name__ == '__main__':

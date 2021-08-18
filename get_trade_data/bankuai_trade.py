@@ -74,7 +74,7 @@ def get_history():
                 logging.error('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
                 print('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
     cursor.close()
-def com_his_rank(start_date = '2020-01-01',end_date = '2021-05-15'):
+def com_his_rank(start_date = '2020-05-15',end_date = '2021-07-16'):
     global bk_dict
     cursor = db.cursor()
     datestart = datetime.datetime.strptime(start_date, '%Y-%m-%d')
@@ -180,6 +180,6 @@ if __name__ == '__main__':
     date = None
     main(date)
     # get_history()
-    # com_his_rank(start_date='2020-12-20', end_date='2020-12-29')
+    # com_his_rank(start_date='2021-05-15', end_date='2021-07-16')
     # print('completed!')
 
