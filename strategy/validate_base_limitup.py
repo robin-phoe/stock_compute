@@ -107,16 +107,18 @@ class stock:
         self.index = None
     def compute(self,):
         print('日期：', self.trade_date)
-        if self.raw['grade'] >= 20000:
-            print('flag1', self.index)
-            if not self.com_close():
-                return False
-        elif self.raw['grade'] >= 10000:
-            print('flag2', self.index)
-            if not self.com_in():
-                return False
-        else:
-            print('flag3',self.index)
+        #按分数分为尾盘买入和盘中条件买入
+        # if self.raw['grade'] >= 20000:
+        #     if not self.com_close():
+        #         return False
+        # elif self.raw['grade'] >= 10000:
+        #     if not self.com_in():
+        #         return False
+        # else:
+        #     return False
+
+        #暂时全部改为盘中条件买入
+        if not self.com_in():
             return False
         self.low_inc_1 = self.trade_single_df.loc[self.index-1,'low_price']/self.call_price -1
         self.high_inc_1 = self.trade_single_df.loc[self.index-1, 'high_price']/self.call_price -1
@@ -128,6 +130,7 @@ class stock:
         self.high_inc_3 = self.trade_single_df.loc[self.index-3, 'high_price']/self.call_price -1
         self.mod_inc_3 = self.trade_single_df.loc[self.index-3, 'mod_price']/self.call_price -1
         return True
+    #判断收盘买入 资料长度、limitup日期是否在trade_df等是否符合条件
     def com_close(self):
         index_list = self.trade_single_df[self.trade_single_df.trade_date == self.trade_date].index.to_list()
         if len(index_list) != 1:
@@ -163,6 +166,8 @@ class stock:
             print('{} 交易记录长度不够:{}'.format(self.raw['stock_id'], self.trade_date))
             return False
         self.call_price = self.trade_single_df.loc[self.index + 1, 'close_price'] * 1.025
+        logging.info('call_price:{}'.format(self.call_price))
+        print('call_price:{} high_prcie:{}'.format(self.call_price,self.trade_single_df.loc[self.index, 'high_price']))
         if self.trade_single_df.loc[self.index, 'high_price'] < self.call_price:
             print('未达到买入标准：日期：{0} ，call_price:{1} ,high_price:{2}'.format(
                 self.trade_single_df.loc[self.index + 1, 'trade_date'],self.call_price,self.trade_single_df.loc[self.index, 'high_price']))

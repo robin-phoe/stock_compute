@@ -45,6 +45,7 @@ class stock:
         self.after_day = 0
         self.last_price = 0
         self.stop = False
+        self.gap_inc_rate = 1.3
     def compute(self):
         if not self.com_inc():
             return
@@ -64,6 +65,8 @@ class stock:
         if self.after_inc > 5:
             return
         if not self.validate_redu():
+            return
+        if not self.validate_inc_long():
             return
         self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100 + self.last_price
     def com_inc(self):
@@ -127,12 +130,23 @@ class stock:
         if arg_rate >=2.5:
             return False
         return True
+    #涨幅判断，125日均线
+    def validate_inc_long(self):
+        len_arg = 125
+        if len(self.single_df) < len_arg:
+            len_avg = len(self.single_df)
+        arg_price = self.single_df['close_price'][0:len_arg].mean()
+        logging.info('{} arg_price:{}'.format(self.id,arg_price))
+        print('{} arg_price:{} {}'.format(self.id,self.single_df.loc[0,'close_price'],arg_price))
+        if self.single_df.loc[0,'close_price'] / arg_price > self.gap_inc_rate:
+            return False
+        return True
 class stock_buffer:
     def __init__(self,date = None):
         self.stock_buffer = {}
         self.trade_df = ''
         self.date = date
-        self.sql_range_day = 50
+        self.sql_range_day = 150
         self.sql_start_date = ''#'2021-06-10'
         self.id_set = set()
         self.save = ''
@@ -175,7 +189,7 @@ class stock_buffer:
             return
         # single_df = single_df.head(10)
         # i1 = single_df['increase']
-        single_df['flag'] = 0
+        # single_df['flag'] = 0
         single_df['flag'] = single_df['increase'].apply(lambda x: 1 if x>=9.75 else 0)
         # i2 = single_df['increase']
         flag_list = single_df['flag'].to_list()[0:10]
@@ -212,8 +226,8 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date =None#'2021-02-01' #'2021-01-20'
-    st_buff = stock_buffer(date)
-    st_buff.init_buffer()
-    # history(start_date= '2021-06-20', end_date= '2021-08-17')
+    date ='2021-07-13'#None#'2021-02-01' #'2021-01-20'
+    # st_buff = stock_buffer(date)
+    # st_buff.init_buffer()
+    history(start_date= '2021-06-20', end_date= '2021-08-17')
     print('completed.')

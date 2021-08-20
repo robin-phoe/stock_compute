@@ -118,7 +118,11 @@ class df_to_db:
         )
         self.conf = "mysql+pymysql://user1:Zzl08382020@192.168.1.6:3306/stockdb"
         self.engine = create_engine(self.conf)
+    def clean_table(self,table):
+        sql = "delete from {}".format(table)
+        commit_to_db(sql)
     def df_to_mysql(self,table,df):
+        self.clean_table(table)
         print('conf:', self.conf)
         df.to_sql(name=table,con=self.engine,if_exists='append')
 dd = df_to_db()
