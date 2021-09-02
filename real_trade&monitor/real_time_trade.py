@@ -1,11 +1,4 @@
 
-
-
-
-'''
-数据来源：东方财富网-行情中心
-http://quote.eastmoney.com/center
-'''
 #coding=utf-8
 import requests
 import re
@@ -16,15 +9,14 @@ import datetime
 import time
 from multiprocessing import Pool
 import redis
-logging.basicConfig(level=logging.DEBUG,filename='../log/real_trade_data.log',filemode='w',
+logging.basicConfig(level=logging.INFO,filename='../log/real_trade_data.log',filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
-db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb" )
-cursor = db.cursor()
 count=0
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 """
 获取单个页面股票数据
+{name:F4,最新价:F2,涨跌幅:F3,成交量:F5,ID:F12,成交额:F6,振幅:F7,最高:F15,最低:F16,今开:F17,昨收:F18,量比:F10,换手:F8,市盈(动):F9,市净率:F23}
 """
 def getOnePageStock(page):
     global count,r
@@ -75,34 +67,6 @@ def getOnePageStock(page):
         logging.info('low_price:{},{}'.format(id,low_price))
         r.hset('open_price', id,open_price)
         logging.info('open_price:{},{}'.format(id,open_price))
-    #     trade_code=date_str+data['f12']
-    #     print(trade_code)
-    #     sql = "select h_table from stock_informations where stock_id={}".format(data['f12'])
-    #     cursor.execute(sql)
-    #     h_table = cursor.fetchall()
-    #     print('h_table1:',h_table)
-    #     if len(h_table) != 0:
-    #         h_table = h_table[0][0]
-    #         print('h_table2:', h_table)
-    #         try:
-    #             sql="insert into stock_history_trade{14}(trade_code,stock_name,stock_id,trade_date,close_price,increase," \
-    #                 "open_price,turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money) " \
-    #                 "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')" \
-    #                 "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_name='{1}',stock_id='{2}',trade_date='{3}'," \
-    #                 "close_price='{4}',increase='{5}',open_price='{6}',turnover_rate='{7}'," \
-    #                 "P_E='{8}',P_B='{9}',high_price='{10}',low_price='{11}',trade_amount='{12}',trade_money='{13}'" \
-    #                 .format(trade_code,data['f14'],data['f12'],date_str,data['f2'],data['f3'],data['f17'],
-    #                         data['f8'],data['f9'],data['f23'],data['f15'],data['f16'],data['f5'],data['f6'],h_table)
-    #             cursor.execute(sql)
-    #             db.commit()
-    #             print('存储完成:page:{},id:{},name:{}'.format(page,data['f12'],data['f14']))
-    #             logging.info('存储完成:page:{},id:{},name:{}'.format(page,data['f12'],data['f14']))
-    #             count += 1
-    #             print('count:',count)
-    #         except Exception as err:
-    #             db.rollback()
-    #             logging.error('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
-    #             print('存储失败:page:{},id:{},name:{},err:{}'.format(page,data['f12'],data['f14'],err))
     return 1
 """
 获取日内板块信息
