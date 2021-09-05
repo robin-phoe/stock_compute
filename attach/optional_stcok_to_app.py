@@ -73,7 +73,8 @@ def fill_stock(stock_dict):
                 sleep(0.3)
                 #点击自选 复时按钮为编辑
                 try:
-                    d.xpath('//*[@resource-id="cn.com.sina.finance:id/search_all_stock_list"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]/android.widget.FrameLayout[1]/android.widget.TextView[1]').click()
+                    # d.xpath('//*[@resource-id="cn.com.sina.finance:id/search_all_stock_list"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]/android.widget.FrameLayout[1]/android.widget.TextView[1]').click()
+                    d(resourceId="cn.com.sina.finance:id/tvAddStock").click()
                 except:
                     try:
                         #单个自选的形式
@@ -84,6 +85,8 @@ def fill_stock(stock_dict):
                         print('button flag2')
                         d(resourceId="cn.com.sina.finance:id/SearchStockItem_Edit").click()
                 sleep(0.2)
+                # 编辑分组
+                d(resourceId="cn.com.sina.finance:id/btn_selfstock_toast_change_group").click()
                 #选择分组
                 if group == '波形':
                     sleep(0.2)
