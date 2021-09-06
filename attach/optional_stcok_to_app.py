@@ -56,6 +56,15 @@ def fill_stock(stock_dict):
     #查询个股
     d(resourceId="cn.com.sina.finance:id/optional_right_img").click()
     count = 0
+    # 选择分组
+    def choose_group():
+        if group == '波形':
+            sleep(0.2)
+            d.swipe(0.6, 0.75, 0.6, 0.65)
+        d(resourceId="cn.com.sina.finance:id/tv_stock_group", text=group).click()
+        sleep(0.3)
+        # 点击确定
+        d(resourceId="cn.com.sina.finance:id/id_dialog_ok_btn").click()
     for group in stock_dict:
         for id in stock_dict[group]:
             try:
@@ -72,29 +81,35 @@ def fill_stock(stock_dict):
                 d.send_keys(id, clear=True)
                 sleep(0.3)
                 #点击自选 复时按钮为编辑
-                try:
-                    # d.xpath('//*[@resource-id="cn.com.sina.finance:id/search_all_stock_list"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]/android.widget.FrameLayout[1]/android.widget.TextView[1]').click()
-                    d(resourceId="cn.com.sina.finance:id/tvAddStock").click()
-                except:
-                    try:
-                        #单个自选的形式
-                        print('button flag1')
-                        d(resourceId="cn.com.sina.finance:id/SearchStockItem_AddOptional").click()
-                    except:
-                        #编辑按钮
-                        print('button flag2')
-                        d(resourceId="cn.com.sina.finance:id/SearchStockItem_Edit").click()
+                # try:
+                # d.xpath('//*[@resource-id="cn.com.sina.finance:id/search_all_stock_list"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]/android.widget.FrameLayout[1]/android.widget.TextView[1]').click()
+                d(resourceId="cn.com.sina.finance:id/tvAddStock").click()
+                # except:
+                #     try:
+                #         #单个自选的形式
+                #         print('button flag1')
+                #         d(resourceId="cn.com.sina.finance:id/SearchStockItem_AddOptional").click()
+                #     except:
+                #         #编辑按钮
+                #         print('button flag2')
+                #         d(resourceId="cn.com.sina.finance:id/SearchStockItem_Edit").click()
                 sleep(0.2)
-                # 编辑分组
-                d(resourceId="cn.com.sina.finance:id/btn_selfstock_toast_change_group").click()
-                #选择分组
-                if group == '波形':
-                    sleep(0.2)
-                    d.swipe(0.6,0.75,0.6,0.65)
-                d(resourceId="cn.com.sina.finance:id/tv_stock_group", text=group).click()
-                sleep(0.3)
-                #点击确定
-                d(resourceId="cn.com.sina.finance:id/id_dialog_ok_btn").click()
+                try:
+                    # 编辑分组
+                    d(resourceId="cn.com.sina.finance:id/btn_selfstock_toast_change_group").click()
+                    choose_group()
+                except:
+                    #取消删除
+                    d(resourceId="cn.com.sina.finance:id/id_dialog_left_btn").click()
+                    #进入个股
+                    d.xpath(
+                        '//*[@resource-id="cn.com.sina.finance:id/search_all_stock_list"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]').click()
+                    #设自选
+                    d(resourceId="cn.com.sina.finance:id/tv_detail_add_stock").click()
+                    #编辑分组
+                    d(resourceId="cn.com.sina.finance:id/alert_dialog_item_tv", text="编辑分组").click()
+                    choose_group()
+                    d.press("back")
                 # sleep(1)
                 count += 1
                 print(count ,' ',id)
