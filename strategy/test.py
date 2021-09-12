@@ -1,16 +1,13 @@
-import pub_uti
+import pub_uti_a
 import pandas as pd
 import json
 import re
-import datetime
-# sql = 'select * from longhu_info limit 10'
-# df = pub_uti.creat_df(sql)
-# print(df)
+
 
 
 def deal_wave():
     sql = "SELECT * FROM boxin_data limit 1"
-    wave_init_df = pub_uti.creat_df(sql)
+    wave_init_df = pub_uti_a.creat_df(sql)
 
     data = {'stock_id': [],
             'trade_date': [],
@@ -34,6 +31,4 @@ def deal_wave():
     print('wave_df',wave_df)
 
 if __name__ == '__main__':
-    s = datetime.datetime.now()
-    deal_wave()
-    print('time:',datetime.datetime.now() - s)
+    print(pub_uti_a.creat_df)

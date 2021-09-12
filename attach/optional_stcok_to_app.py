@@ -6,7 +6,7 @@ import pymysql
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"strategy"))
-import pub_uti
+import pub_uti_a
 
 
 # d = u2.connect('192.168.1.5')
@@ -119,14 +119,14 @@ def fill_stock(stock_dict):
 def sel_data_from_db(date):
     if date == None:
         sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from monitor "
-        date = pub_uti.select_from_db(sql=sql)[0][0]
+        date = pub_uti_a.select_from_db(sql=sql)[0][0]
     print('date:',date)
     sql = "select stock_id,monitor_type from monitor where trade_date = '{}'".format(date)
     type_dic = {'zhuang':'庄线','remen_xiaoboxin':'小波形','remen_retra':'回撤','single_limit_retra':'单涨停','remen_boxin':'波形'}
     stock_dict = {}
     for type in type_dic:
         stock_dict[type_dic[type]] = []
-    df = pub_uti.creat_df(sql= sql)
+    df = pub_uti_a.creat_df(sql= sql)
     df.apply(lambda raw:stock_dict[type_dic[raw['monitor_type']]].append(raw['stock_id']),axis = 1)
     print(len(stock_dict),stock_dict)
     for key in stock_dict:

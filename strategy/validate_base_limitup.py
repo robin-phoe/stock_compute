@@ -6,7 +6,7 @@ import pymysql
 import pandas as pd
 import datetime
 import re
-import pub_uti
+import pub_uti_a
 import mpl_finance
 import matplotlib.pyplot as plt
 from matplotlib import ticker
@@ -41,14 +41,14 @@ class validate_buffer:
     def get_trade_date(self):
         sql = "select * from stock_trade_data where trade_date >= '{0}' and trade_date <= '{1}'".format(
             self.trade_date_start,self.trade_date_end)
-        self.trade_df = pub_uti.creat_df(sql)
+        self.trade_df = pub_uti_a.creat_df(sql)
         self.trade_df['mod_price'] = (self.trade_df['high_price'] + self.trade_df['low_price'])/2
     def get_vali_stock(self):
         sql = "select * from {0} where trade_date >='{1}' and trade_date <='{2}' and grade >= '{3}'".format(
             self.vali_table,self.vali_start,self.vali_end,self.grade)
         # sql = "select * from {0} where trade_date >='{1}' and trade_date <='{2}' and stock_id = '600844' and grade >= '{3}'".format(
         #     self.vali_table,self.vali_start,self.vali_end,self.grade)
-        self.vali_df = pub_uti.creat_df(sql)
+        self.vali_df = pub_uti_a.creat_df(sql)
         self.stcoK_set = set(self.vali_df['stock_id'].to_list())
     def init_stock(self):
         for stock_id in self.stcoK_set:
@@ -283,7 +283,7 @@ class save_result:
         self.df = pd.read_excel(self.csv_name,dtype={'stock_id':str})
         print('df:',self.df.head(100))
     def save(self):
-        pub_uti.df_to_mysql('validate_limit_up',self.df)
+        pub_uti_a.df_to_mysql('validate_limit_up', self.df)
 
 
 

@@ -14,7 +14,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
-import pub_uti
+import pub_uti_a
 
 
 
@@ -51,7 +51,7 @@ class stock_remdu:
     def creat_time(self):
         if self.date == None:
             sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
-            self.date = pub_uti.select_from_db(sql=sql)[0][0]
+            self.date = pub_uti_a.select_from_db(sql=sql)[0][0]
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
     def select_trade_info(self):
@@ -62,7 +62,7 @@ class stock_remdu:
                     " AND stock_name not like 'ST%' AND stock_name not like '*ST%' ".format(self.sql_start_date,self.date)
 
         print('trade_sql:{}'.format(trade_sql))
-        self.trade_df = pub_uti.creat_df(sql=trade_sql)
+        self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
         #标价涨停
         self.trade_df['limit_flag'] = self.trade_df['increase'].apply(lambda x: 1 if x >=9.75 else 0)
@@ -70,7 +70,7 @@ class stock_remdu:
         # print(self.trade_df)
     def select_longhu_info(self):
         longhu_sql = "select trade_date,stock_id from longhu_info where trade_date >= '{0}' and trade_date <= '{1}'".format(self.sql_start_date,self.date)
-        self.longhu = pub_uti.creat_df(sql=longhu_sql)
+        self.longhu = pub_uti_a.creat_df(sql=longhu_sql)
         self.longhu['count_longhu'] = 1
         self.longhu = self.longhu.groupby('stock_id',as_index= False)['count_longhu'].sum()
         print(self.longhu)
@@ -94,7 +94,7 @@ class save_result:
         self.df = pd.read_excel(self.csv_name,dtype={'stock_id':str})
         print('df:',self.df.head(100))
     def save(self):
-        pub_uti.df_to_mysql('base_redu',self.df)
+        pub_uti_a.df_to_mysql('base_redu', self.df)
 
 
 if __name__ == '__main__':

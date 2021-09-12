@@ -11,11 +11,11 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
-import pub_uti
+import pub_uti_a
 
 def add_rank_fun(start_date,end_date):
     sql = "select bk_id,trade_date,bk_name,redu from bankuai_day_data where trade_date >= '{}' and trade_date <= '{}'".format(start_date,end_date)
-    df = pub_uti.creat_df(sql)
+    df = pub_uti_a.creat_df(sql)
     date_set = set(df['trade_date'].to_list())
     print('date_set',date_set)
     for date in date_set:
@@ -27,7 +27,7 @@ def add_rank_fun(start_date,end_date):
         print('single_df:',single_df)
         update_data(single_df)
 def update_data(df):
-    s = pub_uti.save()
+    s = pub_uti_a.save()
     for i in range(len(df)):
         sql = "update bankuai_day_data set ranks = {} where bk_id = '{}' ".format(df.loc[i,'ranks'],df.loc[i,'bk_id'])
         # print('sql:',sql)
