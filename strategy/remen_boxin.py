@@ -14,7 +14,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
 from readconfig import read_config
-import pub_uti
+import pub_uti_a
 
 
 #显示所有列
@@ -154,20 +154,20 @@ class stock_buffer:
         self.creat_time()
         self.clean_tab()
         self.select_info()
-        self.save = pub_uti.save()
+        self.save = pub_uti_a.save()
         for id in self.id_set:
             self.init_stock(id)
         self.save.commit()
     def creat_time(self):
         if self.date == None:
             sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
-            self.date = pub_uti.select_from_db(sql=sql)[0][0]
+            self.date = pub_uti_a.select_from_db(sql=sql)[0][0]
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
         print('日期：',self.date)
     def clean_tab(self):
         sql = "delete from remen_boxin where trade_date = '{}'".format(self.date)
-        pub_uti.commit_to_db(sql)
+        pub_uti_a.commit_to_db(sql)
     def select_info(self):
         trade_sql = "select stock_id,stock_name,high_price,low_price,close_price,trade_date,wave_data,point_type " \
                     " FROM stock_trade_data " \
@@ -175,7 +175,7 @@ class stock_buffer:
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
                     "AND stock_id NOT like '300%' AND  stock_id NOT like '688%'".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
-        self.trade_df = pub_uti.creat_df(sql=trade_sql)
+        self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
         self.id_set = set(self.trade_df['stock_id'].tolist())
         # print(self.df.columns)
@@ -206,7 +206,7 @@ class stock_buffer:
 '''
 def history(start_date,end_date):
     sql = "select distinct date_format(trade_date ,'%Y-%m-%d') as trade_date from stock_trade_data where trade_date>= '{}' and trade_date <= '{}'".format(start_date,end_date)
-    date_tuple = pub_uti.select_from_db(sql=sql) #(('2021-06-14',),('2021-06-15',))
+    date_tuple = pub_uti_a.select_from_db(sql=sql) #(('2021-06-14',),('2021-06-15',))
     date_list = list(chain.from_iterable(date_tuple))
     p = Pool(8)
     for i in range(0, len(date_list)):

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 from copy import deepcopy
 import re
-import pub_uti
+import pub_uti_a
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
@@ -179,13 +179,13 @@ class history:
         if self.sto_tab != None:
             clean_sql = "update stock_trade_data set wave_data = 0 , point_type = '' " \
                         " where trade_date >= '{}' and stock_id like '%{}'".format(self.date,self.sto_tab)
-            pub_uti.commit_to_db(clean_sql)
+            pub_uti_a.commit_to_db(clean_sql)
             sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
                   "where trade_date >= '{}' and stock_id like '%{}'".format(self.date,self.sto_tab)
         else:
             clean_sql = "update stock_trade_data set wave_data = 0 , point_type = '' " \
                         " where trade_date >= '{}' ".format(self.date)
-            pub_uti.commit_to_db(clean_sql)
+            pub_uti_a.commit_to_db(clean_sql)
             sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
                   "where trade_date >= '{}' ".format(self.date)
         self.df = cf.creat_df(sql)
@@ -193,8 +193,8 @@ class history:
         self.select_df()
         # print('stock_id:',self.df['stock_id'].tolist())
         self.id_set = set(self.df['stock_id'].tolist())
-        save_wave = pub_uti.save()
-        save_trade = pub_uti.save()
+        save_wave = pub_uti_a.save()
+        save_trade = pub_uti_a.save()
         start = datetime.datetime.now()
         for stock_id in self.id_set:
             print('id:',stock_id)
