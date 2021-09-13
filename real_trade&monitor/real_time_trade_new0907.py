@@ -198,7 +198,7 @@ if __name__ == "__main__":
     while True:
         time_now = datetime.datetime.now().strftime("%H:%M:%S")
 
-        if time_now >= "09:20:00" and time_now <= "15:10:00" :
+        if time_now >= "09:20:00" and time_now <= "15:01:00" :
             # 开盘清理redis
             if start_trade_flush ==True:
                 r.flushdb()

@@ -226,8 +226,8 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date ='2021-07-13'#None#'2021-02-01' #'2021-01-20'
-    # st_buff = stock_buffer(date)
-    # st_buff.init_buffer()
-    history(start_date= '2021-06-20', end_date= '2021-08-17')
+    date =None#'2021-02-01' #'2021-01-20'
+    st_buff = stock_buffer(date)
+    st_buff.init_buffer()
+    # history(start_date= '2021-06-20', end_date= '2021-08-17')
     print('completed.')
