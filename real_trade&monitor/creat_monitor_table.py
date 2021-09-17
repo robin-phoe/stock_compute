@@ -21,6 +21,21 @@ db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db
 table_dict = {}
 table_code = {'zhuang':'1','remen_xiaoboxin':'2','remen_xiaoboxin_c':'3','remen_boxin':'4','remen_retra':'5','single_limit_retra':'6'}
 def creat_sql(trade_date):
+    table_dict['single_limit_retra'] ='SELECT stock_id,stock_name,grade,"single_limit_retra" ' \
+                                   'FROM limit_up_single ' \
+                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
+                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
+                                     ''.format(trade_date)
+    table_dict['remen_retra'] ='SELECT stock_id,stock_name,grade,"remen_retra" ' \
+                                   'FROM remen_retracement ' \
+                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
+                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
+                                     ''.format(trade_date)
+    table_dict['remen_boxin'] ='SELECT stock_id,stock_name,grade,"remen_boxin" ' \
+                                   'FROM remen_boxin ' \
+                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
+                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
+                                     ''.format(trade_date)
     # table_dict['zhuang'] = 'SELECT stock_id,stock_name,zhuang_grade as grade,"zhuang" ' \
     #                        'FROM com_zhuang ' \
     #                        'WHERE zhuang_grade >= 1000 AND zhuang_grade <10000  AND lasheng_flag = 0 ' \
@@ -36,21 +51,9 @@ def creat_sql(trade_date):
     #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
     #                                  ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
     #                                  ''.format(trade_date)
-    table_dict['remen_boxin'] ='SELECT stock_id,stock_name,grade,"remen_boxin" ' \
-                                   'FROM remen_boxin ' \
-                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
-                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
-                                     ''.format(trade_date)
-    table_dict['remen_retra'] ='SELECT stock_id,stock_name,grade,"remen_retra" ' \
-                                   'FROM remen_retracement ' \
-                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
-                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
-                                     ''.format(trade_date)
-    table_dict['single_limit_retra'] ='SELECT stock_id,stock_name,grade,"single_limit_retra" ' \
-                                   'FROM limit_up_single ' \
-                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \
-                                     ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
-                                     ''.format(trade_date)
+
+
+
 def sel_lastest_day():
     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
     sql  = "select max(trade_date) from stock_trade_data"
@@ -65,6 +68,7 @@ def deal_data(lastest_day):
     lastest_day_str = re.sub('-','',lastest_day)
     cursor = db.cursor()
     stock_list = []
+    stock_dup_list = []
     for table in table_dict:
         logging.info('table info:{},{}'.format(table,table_dict[table]))
         print('table info:{},{}'.format(table,table_dict[table]))
@@ -75,6 +79,9 @@ def deal_data(lastest_day):
     for i in range(len(stock_list)):
         # print(stock_list[i])
         stock_l = list(stock_list[i])
+        if stock_l[0] in stock_dup_list:
+            continue
+        stock_dup_list(stock_l[0])
         #stock_id + date + table_code
         stock_l.append(stock_l[0] + lastest_day_str + table_code[stock_l[3]])
         stock_l.append(lastest_day)
@@ -83,7 +90,7 @@ def deal_data(lastest_day):
     del_sql = "delete from monitor where trade_date = '{}'".format(lastest_day)
     cursor.execute(del_sql)
     db.commit()
-    print('{}：清除成功'.format(lastest_day))
+    print('{}：清除成功'.format(lastest_day))  
     insert_sql = "insert into monitor (stock_id,stock_name,grade,monitor_type,trade_code,trade_date) values (%s,%s,%s,%s,%s,%s)"
     cursor.executemany(insert_sql, stock_list)
     db.commit()
