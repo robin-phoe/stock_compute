@@ -4,9 +4,6 @@ import datetime
 from multiprocessing import Pool
 import pandas as pd
 import numpy as np
-import mpl_finance
-import matplotlib.pyplot as plt
-from matplotlib import ticker
 from copy import deepcopy
 import re
 import pub_uti_a
