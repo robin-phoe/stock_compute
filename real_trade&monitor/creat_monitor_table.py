@@ -3,7 +3,7 @@ import pymysql
 import logging
 import time
 import datetime
-from wxpy import *
+# from wxpy import *
 import pandas as pd
 import numpy as np
 import re
