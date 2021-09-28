@@ -68,6 +68,7 @@ def deal_data(lastest_day):
     lastest_day_str = re.sub('-','',lastest_day)
     cursor = db.cursor()
     stock_list = []
+    stock_filed = []
     stock_dup_list = []
     for table in table_dict:
         logging.info('table info:{},{}'.format(table,table_dict[table]))
@@ -75,24 +76,26 @@ def deal_data(lastest_day):
         cursor.execute(table_dict[table])
         data = cursor.fetchall()
         print('data:',data)
+        if len(data) == 0:
+            continue
         stock_list.extend(list(data))
     for i in range(len(stock_list)):
         # print(stock_list[i])
         stock_l = list(stock_list[i])
         if stock_l[0] in stock_dup_list:
             continue
-        stock_dup_list(stock_l[0])
+        stock_dup_list.append(stock_l[0])
         #stock_id + date + table_code
         stock_l.append(stock_l[0] + lastest_day_str + table_code[stock_l[3]])
         stock_l.append(lastest_day)
-        stock_list[i] = tuple(stock_l)
-    print('stock_list:',stock_list)
+        stock_filed.append(tuple(stock_l))
+    print('stock_filed:',stock_filed)
     del_sql = "delete from monitor where trade_date = '{}'".format(lastest_day)
     cursor.execute(del_sql)
     db.commit()
     print('{}：清除成功'.format(lastest_day))  
     insert_sql = "insert into monitor (stock_id,stock_name,grade,monitor_type,trade_code,trade_date) values (%s,%s,%s,%s,%s,%s)"
-    cursor.executemany(insert_sql, stock_list)
+    cursor.executemany(insert_sql, stock_filed)
     db.commit()
     print('{}：存储成功'.format(lastest_day))
     cursor.close()

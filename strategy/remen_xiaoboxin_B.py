@@ -168,6 +168,7 @@ def main(date):
         sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
         date = pub_uti_a.select_from_db(sql=sql)[0][0]
     date_time = datetime.datetime.strptime(date, '%Y-%m-%d')
+    print("date_time:",date_time)
     start_t = (date_time - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
     # day_delta = 40
     db_config = read_config('db_config')
@@ -204,6 +205,6 @@ def history(start_date,end_date):
     p.join()
     print('All subprocesses done.')
 if __name__ == '__main__':
-    date =None#'2021-02-01' #'2021-01-20'
+    date ='2021-09-24' #None#'2021-02-01' #'2021-01-20'
     main(date)
     # history('2020-01-01','2021-05-06')
