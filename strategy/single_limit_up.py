@@ -31,7 +31,7 @@ class stock:
         self.id = id
         self.single_df = single_df #时间倒序
         self.date = date
-        self.grade = 0 #20000+ 表示尾盘可以进入。10000+，
+        self.grade = 0 #20000+ 表示上涨即可进入，10000+ 表示优秀
         self.low_standard = 1.03
         self.after_inc = 0
         self.before_inc = 0
@@ -47,12 +47,17 @@ class stock:
         self.stop = False
         self.gap_inc_rate = 1.3
     def compute(self):
+        #判断是否属于涨停后区间
         if not self.com_inc():
             return
         self.count_limit_up()
         self.com_last_price()
-        self.com_grade()
-
+        if self.com_grade():
+            self.grade = self.single_limit + self.after_day + abs(int(self.after_inc)) * 100 + self.last_price
+    '''
+    判断前斜率
+    return bool
+    '''
     def com_grade(self):
         #万：(20000:1个涨停，10000：2个连续涨停)
         #千：(2000:涨停第二日开收盘价低于前日涨停价格，1000：开收盘价格低于3%，else：0)
@@ -61,14 +66,21 @@ class stock:
         # if self.before_inc > 5 or self.before_inc < -5 or self.before_inc_abs > 15:
         #     return
         if self.before_inc > 10:
-            return
+            return False
         if self.after_inc > 5:
-            return
+            return False
         if not self.validate_redu():
-            return
+            return False
         if not self.validate_inc_long():
-            return
-        self.grade = self.single_limit + self.after_day + abs(int(self.after_inc))*100 + self.last_price
+            return False
+        else:
+            return True
+
+    '''
+    判断是否属于单涨停回撤区间 & 计算涨停前inc（及绝对值）累加
+    a,期间涨幅大于5False；b,
+    return bool
+    '''
     def com_inc(self):
         count = 0
         for i in range(len(self.single_df)):
@@ -96,13 +108,18 @@ class stock:
                 self.before_inc_abs += abs(self.single_df.loc[i, 'increase'])
                 count += 1
         return True
-    #计算十日内有几个涨停
+
+    '''
+    计算十日内有几个涨停
+    '''
     def count_limit_up(self):
         limit_up_df = self.single_df.head(10)
         flag_index_list = limit_up_df[limit_up_df.flag == 1].index.to_list()
+        #单个涨停grade=15000
         if len(flag_index_list) == 1:
             self.single_limit = 15000
         else:
+            #如果两个涨停连续，grade =10000，两个涨停不连续，则grade =15000
             if abs(flag_index_list[0] - flag_index_list[1]) == 1:
                 self.single_limit = 10000
             else:
@@ -116,7 +133,9 @@ class stock:
         #第二日开收盘价都低于涨停日收盘价*1.03
         elif self.single_df.loc[i-1,'close_price'] <= limit_c_price*1.03 and self.single_df.loc[i-1,'open_price'] <= limit_c_price*1.03:
             self.after_day = 1000
-    #判断是否企稳
+    '''
+    判断是否属于回落后企稳
+    '''
     def com_last_price(self):
         #涨停后一日企稳不在范围内
         if self.single_df.loc[1,'flag'] == 1 :
