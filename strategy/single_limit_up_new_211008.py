@@ -53,15 +53,24 @@ class stock:
         self.last_price = 0
         self.stop = False
         self.gap_inc_rate = 1.3
+        self.fall_vol_rate =None
+        self.fall_slope =None
+        self.inc_day_count =None
+        self.inc_sum =None
+        self.standard_amplitude =None
+        self.extreme_amplitude =None
+        self.lastest_limit_index = None
     '''
     区分单涨停类型，低V反弹 v_rebound；波型 wave；标准型 standard；双涨停 double_limit；
     '''
     def distinguish_type(self):
+        self.lastest_limit_index = self.single_df[self.single_df.flag == 1].index.to_list()[0]
         #判断连续双涨停
-        if self.single_df['flag'][0:10].to_list().sum() ==2:
+        if sum(self.single_df['flag'][0:10].to_list()) ==2:
             limit_list = self.single_df[self.single_df.flag == 1].index.to_list()
             if limit_list[1] -limit_list[0] == 1:
                 self.limit_type = 'double_limit'
+                self.com_double_limit_grade()
                 return
         #判断低V反弹
         down_rate = 0
@@ -76,7 +85,7 @@ class stock:
             self.limit_type = 'v_rebound'
             return
         #判断波型
-        limit_open_price = self.single_df[self.single_df.flag == 1].open_prcie.to_list()[0]
+        limit_open_price = self.single_df[self.single_df.flag == 1].open_price.to_list()[0]
         lastest_close_price = self.single_df.loc[0,'close_price']
         delta_rate = (lastest_close_price / limit_open_price - 1) * 100
         if delta_rate <= 3:
@@ -88,164 +97,85 @@ class stock:
     计算双涨停型分数
     '''
     def com_double_limit_grade(self):
-        double_multiple = 15  #内函数总分68 * 15 =10000
+        double_multiple = 150  #内函数总分68 * 15 =10000
         grade = 0
         #第三日无实线、上影线冒高 bool
-        lastest_limit_index = self.single_df[self.single_df.flag == 1].index.to_list()[0]
-        lastest_limit_c_price = self.single_df.loc[lastest_limit_index,'close_price']
-        three_h_price = self.single_df.loc[lastest_limit_index-1,'high_price']
+        lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
+        three_h_price = self.single_df.loc[self.lastest_limit_index-1,'high_price']
         delta_rate = (three_h_price / lastest_limit_c_price - 1) *100
         if delta_rate >= 1.5:
             self.grade = 0
             return
         #第三日回撤幅度 40
-        three_inc = self.single_df.loc[lastest_limit_index - 1, 'increase']
+        three_inc = self.single_df.loc[self.lastest_limit_index - 1, 'increase']
         grade +=  (-three_inc * 5) if (-three_inc * 5)<40 else 40
         #整体回撤情况 30
+        self.com_fall_data()
+        grade +=(1-1/((self.fall_vol_rate-4) * (self.fall_slope/2) * self.lastest_limit_index/3)) * 30 - self.inc_day_count - self.inc_sum*2#(1-1/((回落量-4) * (斜率/2) * 回落天数/3)) * 30 - 阳线天数*1 -阳线总涨幅*2
         #企稳情况 30
+        self.com_slow_fall_grade()
+        grade += self.stready_grade/100*30
+        self.grade = grade * double_multiple
+        #换手情况 （预留）
     '''
-    【辅助函数】计算回落形态分数
+    【辅助函数】计算回落形态
     '''
-    def com_fall_grade(self):
-        lastest_limit_index = self.single_df[self.single_df.flag == 1].index.to_list()[0]
-        after_limit_df = self.single_df[self.single_df.index < lastest_limit_index]
+    def com_fall_data(self):
+        after_limit_df = self.single_df[self.single_df.index < self.lastest_limit_index]
         #计算回落量及斜率
-        lastest_limit_c_price = self.single_df.loc[lastest_limit_index, 'close_price']
+        lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index, 'close_price']
         lastest_c_price = self.single_df.loc[0, 'close_price']
-        fall_vol_rate =  (lastest_c_price / lastest_limit_c_price -1) * 100
-        fall_slope = fall_vol_rate / lastest_limit_index
+        self.fall_vol_rate =  (lastest_c_price / lastest_limit_c_price -1) * 100
+        self.fall_slope = self.fall_vol_rate / self.lastest_limit_index
         #计算阳线天数比及阳线总涨幅
         inc_serise = after_limit_df[self.single_df.increase > 0]['increase']
-        day_count = inc_serise.count()
-        inc_sum = inc_serise.sum()
+        self.inc_day_count = inc_serise.count()
+        self.inc_sum = inc_serise.sum()
         #计算振幅（标准振幅，极端振幅）
         mean = after_limit_df['close_price'].mean()
         after_limit_df['standard_amplitude'] = 0
         after_limit_df['extreme_amplitude'] = 0
         def com_delta(raw,mean):
-            raw['standard_amplitude'] = (raw['close_price']/raw['mean']-1)*100
-            raw['extreme_amplitude'] = (raw['high_price']/raw['mean']-1)*100 \
-                if abs((raw['high_price']/raw['mean']-1)*100) > abs((raw['low_price']/raw['mean']-1)*100) \
-                else (raw['low_price']/raw['mean']-1)*100
+            raw['standard_amplitude'] = (raw['close_price']/mean-1)*100
+            raw['extreme_amplitude'] = (raw['high_price']/mean-1)*100 \
+                if abs((raw['high_price']/mean-1)*100) > abs((raw['low_price']/mean-1)*100) \
+                else (raw['low_price']/mean-1)*100
             return raw
-        after_limit_df = after_limit_df.apply(com_delta,mean,axis = 1)
-        standard_amplitude = after_limit_df['after_limit_df'].mean()
-        extreme_amplitude = after_limit_df['extreme_amplitude'].mean()
-        return fall_vol_rate,fall_slope,day_count,inc_sum,standard_amplitude,extreme_amplitude
-    def compute(self):
-        #判断是否属于涨停后区间
-        if not self.com_inc():
-            return
-        self.count_limit_up()
-        self.com_last_price()
-        if self.com_grade():
-            self.grade = self.single_limit + self.after_day + abs(int(self.after_inc)) * 100 + self.last_price
+        after_limit_df = after_limit_df.apply(com_delta,args=(mean,),axis = 1)
+        self.standard_amplitude = after_limit_df['standard_amplitude'].mean()
+        self.extreme_amplitude = after_limit_df['extreme_amplitude'].mean()
+        # 换手情况（预留）
     '''
-    判断前斜率
-    return bool
+    【辅助函数】计算回落企稳情况 grade = 100
     '''
-    def com_grade(self):
-        #万：(20000:1个涨停，10000：2个连续涨停)
-        #千：(2000:涨停第二日开收盘价低于前日涨停价格，1000：开收盘价格低于3%，else：0)
-        #百：(abs(int(after_inc))*100)
-        print('前斜率：{}{}'.format(self.before_inc,self.before_inc_abs))
-        # if self.before_inc > 5 or self.before_inc < -5 or self.before_inc_abs > 15:
-        #     return
-        if self.before_inc > 10:
-            return False
-        if self.after_inc > 5:
-            return False
-        if not self.validate_redu():
-            return False
-        if not self.validate_inc_long():
-            return False
+    def com_slow_fall_grade(self):
+        self.stready_grade = 0
+        #最后一日涨幅情况 50
+        standard_delta = self.single_df.loc[0,'increase']
+        extreme_delta = self.single_df.loc[0,'high_price'] / self.single_df.loc[0,'close_price'] -1
+        self.stready_grade +=(-standard_delta**2 + 1.5**2 + standard_delta/3)/1.5**2 * 30#(-涨幅**2 + 1.5**2 + 涨幅/3)/1.5**2 * 30
+        self.stready_grade += (-extreme_delta**2 + 3**2 +extreme_delta/3)/3**2 * 20#(-极值差**2 + 1.5**2 + 极值差/3)/1.5**2 * 20
+        #预留金针探底
+        if self.stready_grade < -5:
+            # 兜底-5
+            self.stready_grade = -5
+        #总回落日期长度 20
+        if self.lastest_limit_index <2:
+            self.stready_grade +=0
+        elif self.lastest_limit_index ==2:
+            self.stready_grade += 5
+        elif 3<=self.lastest_limit_index <=5:
+            self.stready_grade += 20
         else:
-            return True
+            self.stready_grade += 1/(self.lastest_limit_index - 4)*20
+        #总体放缓程度 30
+        fall_vol_rate = (self.single_df.loc[0,'close_price']/self.single_df.loc[self.lastest_limit_index,'close_price'] - 1) * 100
+        delta_rate = 0
+        for i in range(1,self.lastest_limit_index):
+            delta_rate += self.single_df.loc[self.lastest_limit_index -i,'increase'] / ((3/(5*i)-3/(5*(i+1))) * fall_vol_rate) -1
+        print('delta_rate:',delta_rate)
+        #换手情况（预留）
 
-    '''
-    判断是否属于单涨停回撤区间 & 计算涨停前inc（及绝对值）累加
-    a,期间涨幅大于5False；b,
-    return bool
-    '''
-    def com_inc(self):
-        count = 0
-        for i in range(len(self.single_df)):
-            #判断在涨停后区间
-            if not self.limit_up_flag:
-                if self.single_df.loc[i,'flag'] == 1 :
-                    # 涨停在最后一日，退出
-                    if i == 0:
-                        self.stop = True
-                        return False
-                    #比较后一日价格与涨停日收盘价
-                    self.com_price(i)
-                    self.limit_up_flag = True
-                    continue
-                #期间一日涨幅大于5，退出
-                if self.single_df.loc[i,'increase'] >= 4:
-                    self.stop = True
-                    return False
-                self.after_inc += self.single_df.loc[i,'increase']
-                self.after_inc_abs += abs(self.single_df.loc[i, 'increase'])
-            else:
-                if count >= self.before_days:
-                    break
-                self.before_inc += self.single_df.loc[i,'increase']
-                self.before_inc_abs += abs(self.single_df.loc[i, 'increase'])
-                count += 1
-        return True
-
-    '''
-    计算十日内有几个涨停
-    '''
-    def count_limit_up(self):
-        limit_up_df = self.single_df.head(10)
-        flag_index_list = limit_up_df[limit_up_df.flag == 1].index.to_list()
-        #单个涨停grade=15000
-        if len(flag_index_list) == 1:
-            self.single_limit = 15000
-        else:
-            #如果两个涨停连续，grade =10000，两个涨停不连续，则grade =15000
-            if abs(flag_index_list[0] - flag_index_list[1]) == 1:
-                self.single_limit = 10000
-            else:
-                self.single_limit = 15000
-    #涨停第二日开收盘价与前日涨停价格比照
-    def com_price(self,i):
-        limit_c_price = self.single_df.loc[i,'close_price']
-        #第二日开收盘价都低于涨停日收盘价
-        if self.single_df.loc[i-1,'close_price'] <= limit_c_price and self.single_df.loc[i-1,'open_price'] <= limit_c_price:
-            self.after_day = 5000
-        #第二日开收盘价都低于涨停日收盘价*1.03
-        elif self.single_df.loc[i-1,'close_price'] <= limit_c_price*1.03 and self.single_df.loc[i-1,'open_price'] <= limit_c_price*1.03:
-            self.after_day = 1000
-    '''
-    判断是否属于回落后企稳
-    '''
-    def com_last_price(self):
-        #涨停后一日企稳不在范围内
-        if self.single_df.loc[1,'flag'] == 1 :
-            return
-        if -1 <= self.single_df.loc[1,'increase'] <= 3:
-            self.last_price = 10000
-    #热度判断，15日换手率日均大于2.5%则过高
-    def validate_redu(self):
-        arg_rate = self.single_df['turnover_rate'][0:15].mean()
-        print("arg_rate:",arg_rate)
-        if arg_rate >=2.5:
-            return False
-        return True
-    #涨幅判断，125日均线
-    def validate_inc_long(self):
-        len_arg = 125
-        if len(self.single_df) < len_arg:
-            len_avg = len(self.single_df)
-        arg_price = self.single_df['close_price'][0:len_arg].mean()
-        logging.info('{} arg_price:{}'.format(self.id,arg_price))
-        print('{} arg_price:{} {}'.format(self.id,self.single_df.loc[0,'close_price'],arg_price))
-        if self.single_df.loc[0,'close_price'] / arg_price > self.gap_inc_rate:
-            return False
-        return True
 class stock_buffer:
     def __init__(self,date = None):
         self.stock_buffer = {}
@@ -258,7 +188,7 @@ class stock_buffer:
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        self.clean_tab()
+        # self.clean_tab()
         self.select_info()
         self.save = pub_uti_a.save()
         for id in self.id_set:
@@ -308,12 +238,13 @@ class stock_buffer:
             return
         stock_name = single_df.loc[0,'stock_name']
         self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
-        stock_object.compute()
+        stock_object.distinguish_type()
         sql = "insert into limit_up_single(trade_code,stock_id,stock_name,trade_date,grade) " \
               "values('{0}','{1}','{2}','{3}','{4}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}' " \
               "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade)
-        print(stock_name,id, stock_object.grade)
+        if stock_object.grade>0:
+            print(stock_name,id, stock_object.grade)
         self.save.add_sql(sql)
     def get_stock(self,id):
         pass
