@@ -9,8 +9,9 @@ sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"strategy"))
 import pub_uti_a
 
 
-# d = u2.connect('192.168.1.5')
-d=u2.connect_usb()
+d = u2.connect('192.168.1.88')
+# d =u2.connect_wifi('192.168.1.88')
+# d=u2.connect_usb()
 def init():
     d(resourceId="com.miui.home:id/icon_icon", description="新浪财经").click()
     # sleep(5)
