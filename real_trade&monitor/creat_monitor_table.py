@@ -41,11 +41,11 @@ def creat_sql(trade_date):
     #                        'WHERE zhuang_grade >= 1000 AND zhuang_grade <10000  AND lasheng_flag = 0 ' \
     #                        ' AND monitor = 1 AND stock_id not like "688%" ' \
     #                        ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" '
-    table_dict['remen_xiaoboxin'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin" ' \
-                                   'FROM remen_xiaoboxin ' \
-                                   'WHERE trade_date = "{0}"  AND monitor = 1 AND stock_id not like "688%" ' \
-                                   ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
-                                   ''.format(trade_date) #AND grade >= 0 分数尚未完善
+    # table_dict['remen_xiaoboxin'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin" ' \
+    #                                'FROM remen_xiaoboxin ' \
+    #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND stock_id not like "688%" ' \
+    #                                ' AND stock_name NOT LIKE "ST%" AND stock_name NOT LIKE "*ST%" ' \
+    #                                ''.format(trade_date) #AND grade >= 0 分数尚未完善
     # table_dict['remen_xiaoboxin_c'] ='SELECT stock_id,stock_name,grade,"remen_xiaoboxin_c" ' \
     #                                'FROM remen_xiaoboxin_c ' \
     #                                'WHERE trade_date = "{0}"  AND monitor = 1 AND grade > 10000 AND stock_id not like "688%" ' \

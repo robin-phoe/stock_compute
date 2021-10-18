@@ -11,7 +11,7 @@ import datetime
 logging.basicConfig(level=logging.DEBUG, filename='../log/longhu_trade.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
-db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
+db = pymysql.connect(host="127.0.0.1", user="user1", password="Zzl08382020", database="stockdb")
 
 
 def make_date(date):
