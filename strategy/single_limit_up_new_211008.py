@@ -144,17 +144,38 @@ class stock:
             #上升波
             wave_multiple = 200  # 内函数总分50 * 200 =10000
 
-        trend_grade =(1/(1+(self.bofore_delta_inc/8) * (self.before_slope/2))) * 40   # (1/((回落量/2) * (斜率/2) )) * 30
+        #大走勢得分 30
+        '''
+        #此算法較複雜，暫時不使用
+        long_trend_slope= self.h_point_amplitude / self.h_point_count
+        print('大走勢總波動：{}，總天數：{}，斜率：{}'.format(self.h_point_amplitude,self.h_point_count,long_trend_slope))
+        long_trend_grade = 1/(1+long_trend_slope /(self.h_point_count/10)) *30
+        grade += long_trend_grade
+        '''
+        #<0.25,滿分 20
+        long_trend_grade = 20
+        if self.before_k_line_deviation <=0.025:
+            pass
+        elif self.before_k_line_deviation <=0.035:
+            long_trend_grade *= 0.5
+        elif self.before_k_line_deviation <= 0.04:
+            long_trend_grade *= 0.25
+        else:
+            long_trend_grade = 0
+        grade += long_trend_grade
+        #漲停前趨勢得分
+        print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc,self.before_slope))
+        trend_grade =(1/(1+(self.bofore_delta_inc/30) * (self.before_slope/4))) * 30   # (1/((回落量/2) * (斜率/2) )) * 30
         grade +=trend_grade
-        #回撤情况50
+        #回撤情况40
         self.com_fall_data()
-        fall_grade =(1-1/(1+(self.fall_vol_rate/2) * (self.fall_slope/2) * self.lastest_limit_index/5)) * 50 - self.inc_day_count - self.inc_sum*2  # (1-1/((回落量/2) * (斜率/2) * 回落天数/3)) * 30 - 阳线天数*1 -阳线总涨幅*2
+        fall_grade =(1-1/(1+(self.fall_vol_rate/2) * (self.fall_slope/2) * self.lastest_limit_index/5)) * 40   # (1-1/((回落量/2) * (斜率/2) * 回落天数/3)) * 30
         grade += fall_grade
         #企稳情况10
         self.com_slow_fall_grade()
         grade += self.stready_grade/100*10
         self.grade = grade * wave_multiple
-        print('涨停前大趋势：{}，涨停前走势分数：{}，回落分数：{}，企稳情况:{}'.format(self.h_point_fall,trend_grade,fall_grade,self.stready_grade))
+        print('大走勢得分:{},涨停前走势分数：{}，回落分数：{}，企稳情况:{}'.format(long_trend_grade,trend_grade,fall_grade,self.stready_grade/100*10))
         print('波型总分：{}'.format(self.grade))
         #换手（预留）
     '''
@@ -244,20 +265,45 @@ class stock:
         # print('before_limit_df:',before_limit_df)
         if l_list == [] or h_list == []:
             return 0
-        before_extremum_day_count = h_list[0] - l_list[0]
+        if h_list[0] < l_list[0] :
+            #最後一個低點在漲停當日
+            before_extremum_day_count = h_list[0] - self.lastest_limit_index
+        else:
+            before_extremum_day_count = h_list[0] - l_list[0]
         self.bofore_delta_inc = (before_limit_df.loc[h_list[0],'high_price']/before_limit_df.loc[l_list[0],'low_price'] -1)*100
         self.before_slope = self.bofore_delta_inc/before_extremum_day_count
         #涨停前多个H点的走势，差值
         last_price = 0
         self.h_point_fall = 0
+        self.h_point_amplitude = 0
+        self.h_point_count = 0
+        fall_flag = True
+        amplitude_flag = True
         for i in h_list:
             new_price = before_limit_df.loc[i,'high_price']
-            if new_price < last_price:
+            if fall_flag and new_price > last_price:
+                if last_price != 0:
+                    self.h_point_fall += new_price / last_price - 1
+            else:
+                fall_flag = False
+            if amplitude_flag and (last_price == 0 or abs(new_price / last_price -1) <0.15):
+                if last_price != 0:
+                    self.h_point_amplitude += abs(new_price / last_price - 1)
+            else:
+                amplitude_flag = False
+            if (not fall_flag) and (not amplitude_flag):
                 break
-            if last_price != 0:
-                self.h_point_fall += new_price/last_price -1
             last_price = new_price
+            self.h_point_count = i
         self.h_point_fall *= 100
+        self.h_point_amplitude *= 100
+        print('大走勢數據：day_count:{}，h_point_fall:{}，h_point_amplitude:{}'.format(self.h_point_count,self.h_point_fall,self.h_point_amplitude))
+        #計算漲停前30天k綫波動，[abs(x1/mean-1) +abs(x2/mean-1)]/30
+        if len(before_limit_df) >= 30:
+            c_mean = before_limit_df['close_price'][0:30].mean()
+            before_limit_df['delta_mean'] = abs(before_limit_df['close_price']/c_mean-1)
+            self.before_k_line_deviation = before_limit_df['delta_mean'][0:30].mean()
+            print('30日K线偏離值：{}'.format(self.before_k_line_deviation))
         #涨停日与前最近L点距离（涨停前是否已有涨幅），及涨幅情况
         self.day_delta_before_limit = l_list[0] -  self.lastest_limit_index
         self.inc_delta_before_limit = sum(self.single_df['increase'][self.lastest_limit_index:l_list[0]])
