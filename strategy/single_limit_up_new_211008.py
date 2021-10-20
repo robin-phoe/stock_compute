@@ -82,8 +82,9 @@ class stock:
         if len(l_index_list) !=0 and len(h_index_list) !=0:
             if min(l_index_list) < min(h_index_list):
                 down_rate = (h_vol_list[0] / l_vol_list[0] -1)*100
-        if down_rate >= 15:
+        if down_rate >= 25 and abs(h_vol_list[0] - l_vol_list[0]) >= 6:
             self.limit_type = 'v_rebound'
+            self.com_v_rebound()
             return
         #判断波型
         limit_open_price = self.single_df[self.single_df.flag == 1].open_price.to_list()[0]
@@ -91,7 +92,7 @@ class stock:
         delta_rate = (lastest_close_price / limit_open_price - 1) * 100
         if delta_rate <= 3:
             self.limit_type = 'wave'
-            self.com_wave_grade()
+            # self.com_wave_grade()
             return
         #剩余是标准型
         self.limit_type = 'standard'
@@ -182,14 +183,20 @@ class stock:
     【功能】计算低V反弹分数 v_rebound
     '''
     def com_v_rebound(self):
-        #涨停后第二日无冒高
+        grade = 0
+        v_rebound_multiple = 150  # 内函数总分68 * 200 =10000
+        #涨停后第二日无冒高20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
         three_h_price = self.single_df.loc[self.lastest_limit_index-1,'high_price']
         delta_rate = (three_h_price / lastest_limit_c_price - 1) *100
-        #涨停后走势（要平缓）
-        #涨停前走势
-        #涨停前已有涨幅（防范已有涨幅）
-        pass
+        grade += delta_rate
+        #涨停后走势（要平缓）30
+        self.com_fall_data()
+
+        #涨停前走势 20
+        #涨停前已有涨幅（防范已有涨幅）30
+        #换手（预留）
+        self.grade += grade * v_rebound_multiple
     '''
     【辅助函数】计算回落形态
     '''
