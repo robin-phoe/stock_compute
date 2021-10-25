@@ -81,8 +81,9 @@ class stock:
         h_vol_list = self.single_df[self.single_df.point_type == 'h'].high_price.to_list()
         if len(l_index_list) !=0 and len(h_index_list) !=0:
             if min(l_index_list) < min(h_index_list):
-                down_rate = (h_vol_list[0] / l_vol_list[0] -1)*100
-        if down_rate >= 25 and abs(h_vol_list[0] - l_vol_list[0]) >= 6:
+                down_rate = (l_vol_list[0]/h_vol_list[0]  -1)*100
+        print('stock_name:{},down_rate:{},h_price:{},l_price:{}'.format(self.single_df.loc[0,'stock_name'],down_rate,h_vol_list[0] , l_vol_list[0]))
+        if down_rate <= -25 and abs(h_index_list[0] - l_index_list[0]) >= 6:
             self.limit_type = 'v_rebound'
             self.com_v_rebound()
             return
@@ -188,15 +189,86 @@ class stock:
         #涨停后第二日无冒高20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
         three_h_price = self.single_df.loc[self.lastest_limit_index-1,'high_price']
-        delta_rate = (three_h_price / lastest_limit_c_price - 1) *100
-        grade += delta_rate
+        delta_rate = three_h_price / lastest_limit_c_price
+        if delta_rate > 1.03:
+            three_inc_grade = 0
+        elif delta_rate > 1.02:
+            three_inc_grade = 10
+        elif delta_rate > 1.01:
+            three_inc_grade = 10
+        else:
+            three_inc_grade = 20
+        grade += three_inc_grade
         #涨停后走势（要平缓）30
         self.com_fall_data()
-
-        #涨停前走势 20
-        #涨停前已有涨幅（防范已有涨幅）30
+        amplitude_grade = (1/(1+(self.standard_amplitude-1) + (self.extreme_amplitude -2.5)))*30
+        grade += amplitude_grade
+        #涨停前走势
+        self.com_before_trend()
+        #涨停前已有涨幅（防范已有涨幅）[-30,50]
+        before_inc_grade = 1/(1+self.inc_delta_before_limit/2+self.day_delta_before_limit/3)*50
+        print('已有漲幅：{}，漲幅日期：{}'.format(self.inc_delta_before_limit,self.day_delta_before_limit))
+        grade += before_inc_grade
         #换手（预留）
         self.grade += grade * v_rebound_multiple
+        print('總分:{}，第二日无冒高:{},涨停后走势:{},涨停前已有涨幅:{}'.format(self.grade,three_inc_grade,amplitude_grade,before_inc_grade))
+    '''
+    【功能】计算標準型分数 standard
+    '''
+    def com_standard_grade(self):
+        wave_multiple = 200  # 内函数总分50 * 200 =10000
+        grade = 0
+        # 前期走势，上涨波还是下跌波40
+        before_flag = self.com_before_trend()
+        print('before_flag:', before_flag)
+        if before_flag != 1:
+            self.grade = -3
+            return
+        print('h_point_fall:', self.h_point_fall)
+        if self.h_point_fall < -10:
+            # 下跌波
+            wave_multiple = 150  # 内函数总分68 * 150 =10000
+        else:
+            # 上升波
+            wave_multiple = 200  # 内函数总分50 * 200 =10000
+
+        # 大走勢得分 30
+        '''
+        #此算法較複雜，暫時不使用
+        long_trend_slope= self.h_point_amplitude / self.h_point_count
+        print('大走勢總波動：{}，總天數：{}，斜率：{}'.format(self.h_point_amplitude,self.h_point_count,long_trend_slope))
+        long_trend_grade = 1/(1+long_trend_slope /(self.h_point_count/10)) *30
+        grade += long_trend_grade
+        '''
+        # <0.25,滿分 20
+        long_trend_grade = 20
+        if self.before_k_line_deviation <= 0.025:
+            pass
+        elif self.before_k_line_deviation <= 0.035:
+            long_trend_grade *= 0.5
+        elif self.before_k_line_deviation <= 0.04:
+            long_trend_grade *= 0.25
+        else:
+            long_trend_grade = 0
+        grade += long_trend_grade
+        # 漲停前趨勢得分
+        print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc, self.before_slope))
+        trend_grade = (1 / (1 + (self.bofore_delta_inc / 30) * (
+                    self.before_slope / 4))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
+        grade += trend_grade
+        # 回撤情况40
+        self.com_fall_data()
+        fall_grade = (1 - 1 / (1 + (self.fall_vol_rate / 2) * (
+                    self.fall_slope / 2) * self.lastest_limit_index / 5)) * 40  # (1-1/((回落量/2) * (斜率/2) * 回落天数/3)) * 30
+        grade += fall_grade
+        # 企稳情况10
+        self.com_slow_fall_grade()
+        grade += self.stready_grade / 100 * 10
+        self.grade = grade * wave_multiple
+        print('大走勢得分:{},涨停前走势分数：{}，回落分数：{}，企稳情况:{}'.format(long_trend_grade, trend_grade, fall_grade,
+                                                           self.stready_grade / 100 * 10))
+        print('波型总分：{}'.format(self.grade))
+        # 换手（预留）
     '''
     【辅助函数】计算回落形态
     '''
@@ -216,16 +288,17 @@ class stock:
         after_limit_df['standard_amplitude'] = 0
         after_limit_df['extreme_amplitude'] = 0
         def com_delta(raw,mean):
-            raw['standard_amplitude'] = (raw['close_price']/mean-1)*100
-            raw['extreme_amplitude'] = (raw['high_price']/mean-1)*100 \
+            raw['standard_amplitude'] = abs(raw['close_price']/mean-1)*100
+            raw['extreme_amplitude'] = abs(raw['high_price']/mean-1)*100 \
                 if abs((raw['high_price']/mean-1)*100) > abs((raw['low_price']/mean-1)*100) \
-                else (raw['low_price']/mean-1)*100
+                else abs(raw['low_price']/mean-1)*100
             return raw
         after_limit_df = after_limit_df.apply(com_delta,args=(mean,),axis = 1)
         self.standard_amplitude = after_limit_df['standard_amplitude'].mean()
         self.extreme_amplitude = after_limit_df['extreme_amplitude'].mean()
         # 换手情况（预留）
         print('回撤量：{}，回撤斜率：{},阳线天数：{}，阳线总涨幅：{},回撤天数：{}'.format(self.fall_vol_rate, self.fall_slope,self.inc_day_count,self.inc_sum,self.lastest_limit_index))
+        print('標準波動：{}，極端波動：{}'.format(self.standard_amplitude,self.extreme_amplitude))
     '''
     【辅助函数】计算回落企稳情况 grade = 100
     '''
@@ -314,6 +387,9 @@ class stock:
         #涨停日与前最近L点距离（涨停前是否已有涨幅），及涨幅情况
         self.day_delta_before_limit = l_list[0] -  self.lastest_limit_index
         self.inc_delta_before_limit = sum(self.single_df['increase'][self.lastest_limit_index:l_list[0]])
+        if h_list[0] < l_list[0] :
+            #最後一個低點在漲停當日
+            self.day_delta_before_limit = self.inc_delta_before_limit =0
         return 1
 
 
@@ -330,13 +406,13 @@ class stock_buffer:
     def init_buffer(self):
         time1 = datetime.datetime.now()
         self.creat_time()
-        print('创建时间耗时：',datetime.datetime.now() - time1)
+        # print('创建时间耗时：',datetime.datetime.now() - time1)
         time2 = datetime.datetime.now()
         self.clean_tab()
-        print('清除数据耗时：', datetime.datetime.now() - time2)
+        # print('清除数据耗时：', datetime.datetime.now() - time2)
         time3 = datetime.datetime.now()
         self.select_info()
-        print('查询数据耗时：', datetime.datetime.now() - time3)
+        # print('查询数据耗时：', datetime.datetime.now() - time3)
         time4 = datetime.datetime.now()
         self.save = pub_uti_a.save()
         for id in self.id_set:
@@ -344,8 +420,8 @@ class stock_buffer:
             self.init_stock(id)
             # print('单条stock耗时：', datetime.datetime.now() - time5)
         self.save.commit()
-        print('整体存储耗时：', datetime.datetime.now() - time4)
-        print('总耗时：', datetime.datetime.now() - time1)
+        # print('整体存储耗时：', datetime.datetime.now() - time4)
+        # print('总耗时：', datetime.datetime.now() - time1)
     def creat_time(self):
         if self.date == None:
             sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
@@ -365,7 +441,7 @@ class stock_buffer:
         print('trade_sql:{}'.format(trade_sql))
         sel_start_time = datetime.datetime.now()
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
-        print('df DB查询消耗时间：',datetime.datetime.now() - sel_start_time)
+        # print('df DB查询消耗时间：',datetime.datetime.now() - sel_start_time)
         self.trade_df.fillna('',inplace=True)
         self.id_set = set(self.trade_df['stock_id'].tolist())
         #test
@@ -391,12 +467,12 @@ class stock_buffer:
         #涨停在最后一日则退出
         if single_df.loc[0,'flag'] == 1:
             return
-        print('涨停数判断耗时：',datetime.datetime.now()-start_time)
+        # print('涨停数判断耗时：',datetime.datetime.now()-start_time)
         stock_name = single_df.loc[0,'stock_name']
         self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
         start_time = datetime.datetime.now()
         stock_object.distinguish_type()
-        print('单stock耗时：', datetime.datetime.now() - start_time)
+        # print('单stock耗时：', datetime.datetime.now() - start_time)
         sql = "insert into limit_up_single(trade_code,stock_id,stock_name,trade_date,grade) " \
               "values('{0}','{1}','{2}','{3}','{4}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}' " \
@@ -426,7 +502,7 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date ='2021-10-15' #'2021-01-20'
+    date ='2021-06-30' #'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
     # history(start_date= '2021-06-20', end_date= '2021-08-17')
