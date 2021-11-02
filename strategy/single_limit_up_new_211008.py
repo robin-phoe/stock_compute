@@ -28,7 +28,7 @@ pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
 
-logging.basicConfig(level=logging.DEBUG, filename='../log/remen_xiaoboxin_B.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/single_limit_up_new.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 
@@ -427,7 +427,8 @@ class stock_buffer:
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
-                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%'".format(self.sql_start_date,self.date)
+                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' " \
+                    " AND stock_id = '002335'".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         sel_start_time = datetime.datetime.now()
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
@@ -492,8 +493,8 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date ='2021-11-01' #'2021-01-20'
+    date ='2021-06-25' #'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
-    # history(start_date= '2021-06-20', end_date= '2021-08-17')
+    # history(start_date= '2021-06-20', end_date= '2021-10-31')
     print('completed.')
