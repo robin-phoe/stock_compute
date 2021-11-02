@@ -93,7 +93,7 @@ class stock:
         delta_rate = (lastest_close_price / limit_open_price - 1) * 100
         if delta_rate <= 3:
             self.limit_type = 'wave'
-            # self.com_wave_grade()
+            self.com_wave_grade()
             return
         #剩余是标准型
         self.limit_type = 'standard'
@@ -253,11 +253,12 @@ class stock:
         grade += amplitude_grade
         #涨停前已有涨幅 [-20,20]
         inc_param = 0
-        if self.inc_delta_before_limit <= 4 or self.day_delta_before_limit<=2.5:
+        slope = self.inc_delta_before_limit/self.day_delta_before_limit
+        if self.inc_delta_before_limit <= 4 or slope<=2.5:
             inc_param =0
-        elif 4< self.inc_delta_before_limit <8 and self.day_delta_before_limit<=3:
+        elif 4< self.inc_delta_before_limit <8 and slope<=3:
             inc_param = 0.5
-        elif 8< self.inc_delta_before_limit <12 and self.day_delta_before_limit<=4:
+        elif 8< self.inc_delta_before_limit <12 and slope<=4:
             inc_param = 1
         else:
             inc_param = 50
@@ -387,7 +388,7 @@ class stock:
             print('30日K线偏離值：{}'.format(self.before_k_line_deviation))
         #涨停日与前最近L点距离（涨停前是否已有涨幅），及涨幅情况
         self.day_delta_before_limit = l_list[0] -  self.lastest_limit_index
-        self.inc_delta_before_limit = sum(self.single_df['increase'][self.lastest_limit_index:l_list[0]])
+        self.inc_delta_before_limit = sum(self.single_df['increase'][self.lastest_limit_index+1:l_list[0]+1])
         if h_list[0] < l_list[0] :
             #最後一個低點在漲停當日
             self.day_delta_before_limit = self.inc_delta_before_limit =0
@@ -439,7 +440,7 @@ class stock_buffer:
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
                     "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' " \
-                    " AND stock_id = '002335'".format(self.sql_start_date,self.date)
+                    " AND stock_id = '603013'".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         sel_start_time = datetime.datetime.now()
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
@@ -474,6 +475,7 @@ class stock_buffer:
         self.stock_buffer[id] = stock_object = stock(id,self.date,single_df)
         start_time = datetime.datetime.now()
         stock_object.distinguish_type()
+        print('tyep:',stock_object.limit_type)
         # print('单stock耗时：', datetime.datetime.now() - start_time)
         sql = "insert into limit_up_single(trade_code,stock_id,stock_name,trade_date,grade,type ) " \
               "values('{0}','{1}','{2}','{3}','{4}','{5}') " \
@@ -504,7 +506,7 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date ='2021-06-25' #'2021-01-20'
+    date ='2021-08-10' #'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
     # history(start_date= '2021-06-20', end_date= '2021-10-31')
