@@ -227,8 +227,8 @@ class stock:
         # 漲停前趨勢得分 30
         self.com_before_trend()
         print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc, self.before_slope))
-        trend_grade = (1 / (1 + (self.bofore_delta_inc / 20) * (
-                    self.before_slope / 2))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
+        trend_grade = (1 / (1 + (self.bofore_delta_inc / 30) * (
+                    self.before_slope / 4))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
         grade += trend_grade
         #涨停后第二日无冒高20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
