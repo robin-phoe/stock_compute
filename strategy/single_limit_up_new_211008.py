@@ -93,7 +93,7 @@ class stock:
         delta_rate = (lastest_close_price / limit_open_price - 1) * 100
         if delta_rate <= 3:
             self.limit_type = 'wave'
-            self.com_wave_grade()
+            # self.com_wave_grade()
             return
         #剩余是标准型
         self.limit_type = 'standard'
@@ -204,7 +204,7 @@ class stock:
         self.com_fall_data()
         amplitude_value = (self.standard_amplitude - 1) + (self.extreme_amplitude - 2.5)
         amplitude_value = amplitude_value if amplitude_value > 0 else 0
-        amplitude_grade = (1 / (1 + amplitude_value)) * 40
+        amplitude_grade = (1 / (1 + amplitude_value)) * 30
         grade += amplitude_grade
         #涨停前走势
         self.com_before_trend()
