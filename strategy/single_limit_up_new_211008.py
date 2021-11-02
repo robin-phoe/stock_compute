@@ -232,13 +232,15 @@ class stock:
         grade += trend_grade
         #涨停后第二日无冒高20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
-        three_h_price = self.single_df.loc[self.lastest_limit_index-1,'high_price']
-        delta_rate = three_h_price / lastest_limit_c_price
-        if delta_rate > 1.05:
+        three_c_price = self.single_df.loc[self.lastest_limit_index-1,'close_price']
+        three_h_price = self.single_df.loc[self.lastest_limit_index - 1, 'high_price']
+        delta_rate_c = three_c_price / lastest_limit_c_price
+        delta_rate_h = three_h_price / lastest_limit_c_price
+        if delta_rate_c > 1.05:
             three_inc_grade = 0
-        elif delta_rate > 1.03:
+        elif delta_rate_c > 1.03 and delta_rate_h <=1.07:
             three_inc_grade = 10
-        elif delta_rate > 1.02:
+        elif delta_rate_c > 1.02 and delta_rate_h <=1.05 :
             three_inc_grade = 15
         else:
             three_inc_grade = 20
