@@ -250,7 +250,16 @@ class stock:
         amplitude_grade = (1/(1+amplitude_value))*30
         grade += amplitude_grade
         #涨停前已有涨幅 [-20,20]
-        before_inc_grade = 1/(1+self.inc_delta_before_limit/2+self.day_delta_before_limit/3)*20
+        inc_param = 0
+        if self.inc_delta_before_limit <= 4 or self.day_delta_before_limit<=2.5:
+            inc_param =0
+        elif 4< self.inc_delta_before_limit <8 and self.day_delta_before_limit<=3:
+            inc_param = 0.5
+        elif 8< self.inc_delta_before_limit <12 and self.day_delta_before_limit<=4:
+            inc_param = 1
+        else:
+            inc_param = 50
+        before_inc_grade = 1/(1+inc_param)*20
         # print('已有漲幅：{}，漲幅日期：{}'.format(self.inc_delta_before_limit,self.day_delta_before_limit))
         grade += before_inc_grade
 
