@@ -224,11 +224,11 @@ class stock:
     def com_standard_grade(self):
         wave_multiple = 200  # 内函数总分50 * 200 =10000
         grade = 0
-        # 漲停前趨勢得分 20
+        # 漲停前趨勢得分 30
         self.com_before_trend()
         print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc, self.before_slope))
-        trend_grade = (1 / (1 + (self.bofore_delta_inc / 30) * (
-                    self.before_slope / 4))) * 20  # (1/((回落量/2) * (斜率/2) )) * 30
+        trend_grade = (1 / (1 + (self.bofore_delta_inc / 20) * (
+                    self.before_slope / 2))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
         grade += trend_grade
         #涨停后第二日无冒高20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
@@ -243,11 +243,11 @@ class stock:
         else:
             three_inc_grade = 20
         grade += three_inc_grade
-        #涨停后走势（要平缓）40
+        #涨停后走势（要平缓）30
         self.com_fall_data()
         amplitude_value = (self.standard_amplitude -1) + (self.extreme_amplitude -2.5)
         amplitude_value = amplitude_value if amplitude_value > 0 else 0
-        amplitude_grade = (1/(1+amplitude_value))*40
+        amplitude_grade = (1/(1+amplitude_value))*30
         grade += amplitude_grade
         #涨停前已有涨幅 [-20,20]
         before_inc_grade = 1/(1+self.inc_delta_before_limit/2+self.day_delta_before_limit/3)*20
