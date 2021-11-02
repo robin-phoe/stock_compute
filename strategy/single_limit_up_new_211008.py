@@ -202,7 +202,9 @@ class stock:
         grade += three_inc_grade
         #涨停后走势（要平缓）30
         self.com_fall_data()
-        amplitude_grade = (1/(1+(self.standard_amplitude-1) + (self.extreme_amplitude -2.5)))*30
+        amplitude_value = (self.standard_amplitude - 1) + (self.extreme_amplitude - 2.5)
+        amplitude_value = amplitude_value if amplitude_value > 0 else 0
+        amplitude_grade = (1 / (1 + amplitude_value)) * 40
         grade += amplitude_grade
         #涨停前走势
         self.com_before_trend()
