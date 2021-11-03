@@ -396,6 +396,8 @@ class stock:
             before_limit_df['delta_mean'] = abs(before_limit_df['close_price']/c_mean-1)
             self.before_k_line_deviation = before_limit_df['delta_mean'][0:30].mean()
             print('30日K线偏離值：{}'.format(self.before_k_line_deviation))
+        else:
+            self.before_k_line_deviation = 10000
         #涨停日与前最近L点距离（涨停前是否已有涨幅），及涨幅情况
         self.day_delta_before_limit = l_list[0] -  self.lastest_limit_index
         self.inc_delta_before_limit = sum(self.single_df['increase'][self.lastest_limit_index+1:l_list[0]+1])
