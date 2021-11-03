@@ -61,6 +61,10 @@ class stock:
         self.extreme_amplitude =None
         self.lastest_limit_index = None
         self.h_point_fall = None
+        self.bofore_delta_inc = None
+        self.before_slope = None
+        self.h_point_amplitude =None
+        self.day_delta_before_limit = None
     '''
     区分单涨停类型，低V反弹 v_rebound；波型 wave；标准型 standard；双涨停 double_limit；
     '''
@@ -82,7 +86,7 @@ class stock:
         if len(l_index_list) !=0 and len(h_index_list) !=0:
             if min(l_index_list) < min(h_index_list):
                 down_rate = (l_vol_list[0]/h_vol_list[0]  -1)*100
-        print('stock_name:{},down_rate:{},h_price:{},l_price:{}'.format(self.single_df.loc[0,'stock_name'],down_rate,h_vol_list[0] , l_vol_list[0]))
+        # print('stock_name:{},down_rate:{},h_price:{},l_price:{}'.format(self.single_df.loc[0,'stock_name'],down_rate,h_vol_list[0] , l_vol_list[0]))
         if down_rate <= -25 and abs(h_index_list[0] - l_index_list[0]) >= 6:
             self.limit_type = 'v_rebound'
             self.com_v_rebound()
@@ -225,7 +229,9 @@ class stock:
         wave_multiple = 200  # 内函数总分50 * 200 =10000
         grade = 0
         # 漲停前趨勢得分 30
-        self.com_before_trend()
+        break_flag = self.com_before_trend()
+        if break_flag == 0:
+            return 0
         print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc, self.before_slope))
         trend_grade = (1 / (1 + (self.bofore_delta_inc / 30) * (
                     self.before_slope / 4))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
@@ -253,7 +259,10 @@ class stock:
         grade += amplitude_grade
         #涨停前已有涨幅 [-20,20]
         inc_param = 0
-        slope = self.inc_delta_before_limit/self.day_delta_before_limit
+        if self.day_delta_before_limit != 0:
+            slope = self.inc_delta_before_limit/self.day_delta_before_limit
+        else:
+            slope = 0
         if self.inc_delta_before_limit <= 4 or slope<=2.5:
             inc_param =0
         elif 4< self.inc_delta_before_limit <8 and slope<=3:
@@ -346,6 +355,7 @@ class stock:
         h_list = before_limit_df[before_limit_df.point_type == 'h'].index.to_list()
         # print('before_limit_df:',before_limit_df)
         if l_list == [] or h_list == []:
+            print('錯誤：，不包含高低點！')
             return 0
         if h_list[0] < l_list[0] :
             #最後一個低點在漲停當日
@@ -441,6 +451,12 @@ class stock_buffer:
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
                     "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' " \
                     " AND stock_id = '603013'".format(self.sql_start_date,self.date)
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,increase,turnover_rate,point_type " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
+                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' " \
+                    " ".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         sel_start_time = datetime.datetime.now()
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
@@ -494,20 +510,24 @@ def history(start_date,end_date):
     sql = "select distinct date_format(trade_date ,'%Y-%m-%d') as trade_date from stock_trade_data where trade_date>= '{}' and trade_date <= '{}'".format(start_date,end_date)
     date_tuple = pub_uti_a.select_from_db(sql=sql) #(('2021-06-14',),('2021-06-15',))
     date_list = list(chain.from_iterable(date_tuple))
-    p = Pool(8)
+    # p = Pool(8)
     for i in range(0, len(date_list)):
+        print('日期：{}'.format(date_list[i]))
         st_buff = stock_buffer(date_list[i])
-        p.apply_async(st_buff.init_buffer)
-    #    p.apply_async(main, args=('1',date,))
+        st_buff.init_buffer()
+    #     st_buff = stock_buffer(date_list[i])
+    #     p.apply_async(st_buff.init_buffer)
+    # #    p.apply_async(main, args=('1',date,))
+
     print('Waiting for all subprocesses done...')
-    p.close()
-    p.join()
+    # p.close()
+    # p.join()
     print('All subprocesses done.')
 
 
 if __name__ == '__main__':
-    date ='2021-08-10' #'2021-01-20'
-    st_buff = stock_buffer(date)
-    st_buff.init_buffer()
-    # history(start_date= '2021-06-20', end_date= '2021-10-31')
+    # date ='2021-08-10' #'2021-01-20'
+    # st_buff = stock_buffer(date)
+    # st_buff.init_buffer()
+    history(start_date= '2021-01-01', end_date= '2021-10-31')
     print('completed.')
