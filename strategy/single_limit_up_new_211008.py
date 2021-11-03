@@ -443,7 +443,7 @@ class stock_buffer:
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
     def clean_tab(self):
-        sql = "delete from limit_up_single where trade_date = '{}'".format(self.date)
+        sql = "delete from limit_up_single_validate where trade_date = '{}'".format(self.date)
         print('清除完成。')
         pub_uti_a.commit_to_db(sql)
     def select_info(self):
@@ -495,7 +495,7 @@ class stock_buffer:
         stock_object.distinguish_type()
         print('tyep:',stock_object.limit_type)
         # print('单stock耗时：', datetime.datetime.now() - start_time)
-        sql = "insert into limit_up_single(trade_code,stock_id,stock_name,trade_date,grade,type ) " \
+        sql = "insert into limit_up_single_validate(trade_code,stock_id,stock_name,trade_date,grade,type ) " \
               "values('{0}','{1}','{2}','{3}','{4}','{5}') " \
               "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}',type='{5}' " \
               "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade,stock_object.limit_type)
