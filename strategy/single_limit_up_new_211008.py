@@ -211,7 +211,9 @@ class stock:
         amplitude_grade = (1 / (1 + amplitude_value)) * 30
         grade += amplitude_grade
         #涨停前走势
-        self.com_before_trend()
+        break_flag= self.com_before_trend()
+        if break_flag == 0:
+            return 0
         #涨停前已有涨幅（防范已有涨幅）[-30,50]
         before_inc_grade = 1/(1+self.inc_delta_before_limit/2+self.day_delta_before_limit/3)*50
         print('已有漲幅：{}，漲幅日期：{}'.format(self.inc_delta_before_limit,self.day_delta_before_limit))
@@ -531,5 +533,5 @@ if __name__ == '__main__':
     # date ='2021-08-10' #'2021-01-20'
     # st_buff = stock_buffer(date)
     # st_buff.init_buffer()
-    history(start_date= '2021-01-01', end_date= '2021-10-31')
+    history(start_date= '2021-01-29', end_date= '2021-10-31')
     print('completed.')
