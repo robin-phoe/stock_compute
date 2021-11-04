@@ -13,11 +13,11 @@ class pic:
     def select(self):
         #standard  v_rebound   double_limit   wave
         sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor,l.type from stock_trade_data s " \
-              " LEFT JOIN (select * from limit_up_single where type = 'v_rebound' and trade_date >='{0}' and trade_date <='{1}') l " \
+              " LEFT JOIN (select * from limit_up_single_validate where type = 'v_rebound' and trade_date >='{0}' and trade_date <='{1}') l " \
               " ON s.trade_code = l.trade_code " \
               " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
         # sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor,l.type from stock_trade_data s " \
-        #       " LEFT JOIN (select * from limit_up_single where  trade_date >='{0}' and trade_date <='{1}') l " \
+        #       " LEFT JOIN (select * from limit_up_single_validate where  trade_date >='{0}' and trade_date <='{1}') l " \
         #       " ON s.trade_code = l.trade_code " \
         #       " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
         self.sel_df = pub_uti_a.creat_df(sql)
@@ -43,7 +43,7 @@ class pic:
         self.deal_data()
         # ax = self.sel_df.plot.scatter(x='grade', y='inc_2',color = 'Green',label = 'g1')
         df =self.triger_monitor_df
-        df.plot.scatter(x='grade', y='inc_2',s=5,c='Green',figsize=(10,10),)
+        df.plot.scatter(x='grade', y='inc_2',s=2,c='Green',figsize=(15,15),)
         lenth = len(df)
         mean = df['inc_2'].mean()
         print('总数：{}，平均数：{}'.format(lenth,mean))
@@ -55,6 +55,6 @@ class pic:
         # self.triger_monitor_df.plot.scatter(x='grade', y='inc_2')
         # plt.show()
 if __name__ == '__main__':
-    p =pic('2021-01-01','2021-03-26')
+    p =pic('2021-01-01','2021-10-31')
     p.show_pic()
 
