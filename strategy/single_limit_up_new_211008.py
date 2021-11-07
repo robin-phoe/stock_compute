@@ -65,6 +65,9 @@ class stock:
         self.before_slope = None
         self.h_point_amplitude =None
         self.day_delta_before_limit = None
+        self.factor = {}
+        self.t_r_volume = None
+        self.t_r_inc = None
     '''
     区分单涨停类型，低V反弹 v_rebound；波型 wave；标准型 standard；双涨停 double_limit；
     '''
@@ -104,6 +107,7 @@ class stock:
         self.com_standard_grade()
     '''
     【功能】计算双涨停型分数 double_limit
+    因子：第三日回撤幅度40；整体回撤情况30；企稳情况30；换手；
     '''
     def com_double_limit_grade(self):
         double_multiple = 150  #内函数总分68 * 15 =10000
@@ -117,22 +121,33 @@ class stock:
             return
         #第三日回撤幅度 40
         three_inc = self.single_df.loc[self.lastest_limit_index - 1, 'increase']
+        self.factor['three_inc'] = three_inc
         three_grade =  (-three_inc * 5) if (-three_inc * 5)<40 else 40
+        self.factor['three_grade'] = three_grade
         print('第三日回撤幅度:{}'.format(three_grade))
         grade += three_grade
         #整体回撤情况 30
         self.com_fall_data()
         fall_grade =(1-1/(1+(self.fall_vol_rate/2) * (self.fall_slope/2) * self.lastest_limit_index/3)) * 30 - self.inc_day_count - self.inc_sum*2#(1-1/((回落量/2) * (斜率/2) * 回落天数/3)) * 30 - 阳线天数*1 -阳线总涨幅*2
         print('整体回撤情况:{}'.format(fall_grade))
+        self.factor['fall_vol_rate'] = self.fall_vol_rate
+        self.factor['fall_slope'] = self.fall_slope
+        self.factor['fall_grade'] = fall_grade
         grade += fall_grade
         #企稳情况 30
         self.com_slow_fall_grade()
         print('企稳情况:{}'.format(self.stready_grade))
+        self.factor['stready_grade'] = self.stready_grade
         grade += self.stready_grade/100*30
         self.grade = grade * double_multiple
         #换手情况 （预留）
+        self.turnover_hot()
+        self.factor['t_r_inc'] = self.t_r_inc
+        self.factor['t_r_volume'] = self.t_r_volume
+        self.factor['t_r_mul'] = self.t_r_mul
     '''
     【功能】计算波型分数 wave
+    因子：大走势得分20；涨停前趋势得分30；回撤情况40；企稳情况10；换手；
     '''
     def com_wave_grade(self):
         wave_multiple = 200  # 内函数总分50 * 200 =10000
@@ -151,7 +166,7 @@ class stock:
             #上升波
             wave_multiple = 200  # 内函数总分50 * 200 =10000
 
-        #大走勢得分 30
+        #大走勢得分
         '''
         #此算法比较复杂，暫時不使用
         long_trend_slope= self.h_point_amplitude / self.h_point_count
@@ -170,7 +185,8 @@ class stock:
         else:
             long_trend_grade = 0
         grade += long_trend_grade
-        #漲停前趨勢得分
+        self.factor['long_trend_grade'] = long_trend_grade
+        #漲停前趨勢得分30
         print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc,self.before_slope))
         trend_grade =(1/(1+(self.bofore_delta_inc/30) * (self.before_slope/4))) * 30   # (1/((回落量/2) * (斜率/2) )) * 30
         grade +=trend_grade
@@ -178,15 +194,22 @@ class stock:
         self.com_fall_data()
         fall_grade =(1-1/(1+(self.fall_vol_rate/2) * (self.fall_slope/2) * self.lastest_limit_index/5)) * 40   # (1-1/((回落量/2) * (斜率/2) * 回落天数/3)) * 30
         grade += fall_grade
+        self.factor['fall_grade'] = fall_grade
         #企稳情况10
         self.com_slow_fall_grade()
         grade += self.stready_grade/100*10
         self.grade = grade * wave_multiple
         print('大走勢得分:{},涨停前走势分数：{}，回落分数：{}，企稳情况:{}'.format(long_trend_grade,trend_grade,fall_grade,self.stready_grade/100*10))
         print('波型总分：{}'.format(self.grade))
+        self.factor['stready_grade'] = self.stready_grade
         #换手（预留）
+        self.turnover_hot()
+        self.factor['t_r_inc'] = self.t_r_inc
+        self.factor['t_r_volume'] = self.t_r_volume
+        self.factor['t_r_mul'] = self.t_r_mul
     '''
     【功能】计算低V反弹分数 v_rebound
+    因子：第二日冒高20;涨停后走势30;涨停前已有涨幅50;换手
     '''
     def com_v_rebound(self):
         grade = 0
@@ -204,9 +227,11 @@ class stock:
         else:
             three_inc_grade = 20
         grade += three_inc_grade
+        self.factor['three_inc_grade'] = delta_rate
         #涨停后走势（要平缓）30
         self.com_fall_data()
         amplitude_value = (self.standard_amplitude - 1) + (self.extreme_amplitude - 2.5)
+        self.factor['amplitude_value'] = amplitude_value
         amplitude_value = amplitude_value if amplitude_value > 0 else 0
         amplitude_grade = (1 / (1 + amplitude_value)) * 30
         grade += amplitude_grade
@@ -218,7 +243,13 @@ class stock:
         before_inc_grade = 1/(1+self.inc_delta_before_limit/2+self.day_delta_before_limit/3)*50
         print('已有漲幅：{}，漲幅日期：{}'.format(self.inc_delta_before_limit,self.day_delta_before_limit))
         grade += before_inc_grade
+        self.factor['before_inc_grade'] = before_inc_grade
         #换手（预留）
+        self.turnover_hot()
+        self.factor['t_r_inc'] = self.t_r_inc
+        self.factor['t_r_volume'] = self.t_r_volume
+        self.factor['t_r_mul'] = self.t_r_mul
+
         self.grade += grade * v_rebound_multiple
         print('總分:{}，第二日无冒高:{},涨停后走势:{},涨停前已有涨幅:{}'.format(self.grade,three_inc_grade,amplitude_grade,before_inc_grade))
     '''
@@ -235,8 +266,11 @@ class stock:
         if break_flag == 0:
             return 0
         print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc, self.before_slope))
+        self.factor['bofore_delta_inc'] = self.bofore_delta_inc
+        self.factor['before_slope'] = self.before_slope
         trend_grade = (1 / (1 + (self.bofore_delta_inc / 30) * (
                     self.before_slope / 4))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
+        self.factor['trend_grade'] = trend_grade
         grade += trend_grade
         #涨停后第二日无冒高20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
@@ -244,6 +278,8 @@ class stock:
         three_h_price = self.single_df.loc[self.lastest_limit_index - 1, 'high_price']
         delta_rate_c = three_c_price / lastest_limit_c_price
         delta_rate_h = three_h_price / lastest_limit_c_price
+        self.factor['delta_rate_c'] = delta_rate_c
+        self.factor['delta_rate_h'] = delta_rate_h
         if delta_rate_c > 1.05:
             three_inc_grade = 0
         elif delta_rate_c > 1.03 and delta_rate_h <=1.07:
@@ -253,9 +289,11 @@ class stock:
         else:
             three_inc_grade = 20
         grade += three_inc_grade
+        self.factor['three_inc_grade'] = three_inc_grade
         #涨停后走势（要平缓）30
         self.com_fall_data()
         amplitude_value = (self.standard_amplitude -1) + (self.extreme_amplitude -2.5)
+        self.factor['amplitude_value'] = amplitude_value
         amplitude_value = amplitude_value if amplitude_value > 0 else 0
         amplitude_grade = (1/(1+amplitude_value))*30
         grade += amplitude_grade
@@ -273,7 +311,10 @@ class stock:
             inc_param = 1
         else:
             inc_param = 50
+        self.factor['inc_delta_before_limit'] = self.inc_delta_before_limit
+        self.factor['slope'] = slope
         before_inc_grade = 1/(1+inc_param)*20
+        self.factor['before_inc_grade'] = before_inc_grade
         # print('已有漲幅：{}，漲幅日期：{}'.format(self.inc_delta_before_limit,self.day_delta_before_limit))
         grade += before_inc_grade
 
@@ -282,6 +323,10 @@ class stock:
                                                            before_inc_grade))
         print('标准型总分：{}'.format(self.grade))
         # 换手（预留）
+        self.turnover_hot()
+        self.factor['t_r_inc'] = self.t_r_inc
+        self.factor['t_r_volume'] = self.t_r_volume
+        self.factor['t_r_mul'] = self.t_r_mul
     '''
     【辅助函数】计算回落形态
     '''
@@ -407,7 +452,15 @@ class stock:
             #最後一個低點在漲停當日
             self.day_delta_before_limit = self.inc_delta_before_limit =0
         return 1
-
+    def turnover_hot(self):
+        #换手增幅（近5日最大斜率变化）turnover_rate
+        self.single_df['t_r_3'] = self.single_df['turnover_rate'].shift(-3)
+        self.single_df['t_r_inc'] = self.single_df['turnover_rate'] / self.single_df['t_r_3']
+        self.t_r_inc =max(self.single_df['t_r_inc'][(0 if self.lastest_limit_index-3 <0 else self.lastest_limit_index-3):self.lastest_limit_index+1])
+        #换手量绝对值
+        self.t_r_volume = max(self.single_df['turnover_rate'][(0 if self.lastest_limit_index-3 <0 else self.lastest_limit_index-3):self.lastest_limit_index+1])
+        #量与斜率乘积
+        self.t_r_mul = self.t_r_volume * self.t_r_inc
 
 class stock_buffer:
     def __init__(self,date = None):
@@ -497,10 +550,11 @@ class stock_buffer:
         stock_object.distinguish_type()
         print('tyep:',stock_object.limit_type)
         # print('单stock耗时：', datetime.datetime.now() - start_time)
-        sql = "insert into limit_up_single_validate(trade_code,stock_id,stock_name,trade_date,grade,type ) " \
-              "values('{0}','{1}','{2}','{3}','{4}','{5}') " \
-              "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}',type='{5}' " \
-              "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade,stock_object.limit_type)
+        print('stock_object.factor:',stock_object.factor)
+        sql = "insert into limit_up_single_validate(trade_code,stock_id,stock_name,trade_date,grade,type,factor ) " \
+              "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}') " \
+              "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_id='{1}',stock_name='{2}',trade_date='{3}',grade='{4}',type='{5}',factor='{6}' " \
+              "".format(stock_object.trade_code,id,stock_name,self.date,stock_object.grade,stock_object.limit_type,json.dumps(stock_object.factor, indent=2, ensure_ascii=False))
         if stock_object.grade>0:
             print(stock_name,id, stock_object.grade)
         self.save.add_sql(sql)
@@ -530,8 +584,8 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    # date ='2021-08-10' #'2021-01-20'
+    date ='2021-08-10' #'2021-01-20'
     # st_buff = stock_buffer(date)
     # st_buff.init_buffer()
-    history(start_date= '2021-01-29', end_date= '2021-10-31')
+    history(start_date= '2021-10-01', end_date= '2021-10-31')
     print('completed.')
