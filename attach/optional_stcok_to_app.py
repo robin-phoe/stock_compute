@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"strategy"))
 import pub_uti_a
 
-
+# d = u2.connect()
 d = u2.connect('192.168.1.88')
 # d =u2.connect_wifi('192.168.1.88')
 # d=u2.connect_usb()
@@ -123,7 +123,7 @@ def sel_data_from_db(date):
         date = pub_uti_a.select_from_db(sql=sql)[0][0]
     print('date:',date)
     sql = "select stock_id,monitor_type from monitor where trade_date = '{}'".format(date)
-    type_dic = {'zhuang':'庄线','remen_xiaoboxin':'小波形','remen_retra':'回撤','single_limit_retra':'单涨停','remen_boxin':'波形'}
+    type_dic = {'zhuang':'庄线','remen_xiaoboxin':'小波形','remen_boxin':'波形','single_limit_retra':'单涨停','remen_retra':'回撤'}
     stock_dict = {}
     for type in type_dic:
         stock_dict[type_dic[type]] = []
