@@ -1,4 +1,5 @@
 #使用散点图展示计算结果
+import datetime
 import json
 import logging
 
@@ -6,6 +7,7 @@ import pub_uti_a
 import  pandas as pd
 import matplotlib.pyplot as plt
 import copy
+import re
 pd.set_option('display.max_columns', None)
 class pic:
     def __init__(self,start_date,end_date):
@@ -21,28 +23,44 @@ class pic:
         #       " LEFT JOIN (select * from limit_up_single_validate where type = 'v_rebound' and trade_date >='{0}' and trade_date <='{1}') l " \
         #       " ON s.trade_code = l.trade_code " \
         #       " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
-        sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor from stock_trade_data s " \
-              " LEFT JOIN (select * from remen_xiaoboxin where  trade_date >='{0}' and trade_date <='{1}') l " \
-              " ON s.trade_code = l.trade_code " \
+        sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.zhuang_grade,l.monitor,l.zhuang_section from stock_trade_data s " \
+              " INNER JOIN (select * from com_zhuang where  zhuang_grade>=1000  ) l " \
+              " ON s.stock_id = l.stock_id " \
               " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
         self.sel_df = pub_uti_a.creat_df(sql)
         self.sel_df.to_csv('record_sel.csv')
     def deal_data(self):
-        df_group =self.sel_df.groupby('stock_id',as_index =False)
-        self.sel_df['grade'] = self.sel_df['grade'].apply(lambda x: 0 if (x<0 or x>20000) else x)#消除异常分
-        self.sel_df['h_price_1'] =df_group['high_price'].shift(1) #triger
-        self.sel_df['close_price_2'] = df_group['close_price'].shift(2)
-        self.sel_df.dropna(subset= ['h_price_1','close_price_2'],inplace = True)
-        self.sel_df['inc_1'] = (self.sel_df['h_price_1']/self.sel_df['close_price']-1)*100
-        self.sel_df['inc_2'] = (self.sel_df['close_price_2']/self.sel_df['close_price']-1.025)*100
-        # self.sel_df['after_1_high'] = df_group['high_price'].shift(-1)
-        # self.sel_df['after_2_high'] = df_group['high_price'].shift(-2)
-        # self.sel_df['after_2_mid'] = (df_group['high_price'].shift(-2) + df_group['low_price'].shift(-2))/2
-        # print('self.sel_df:', self.sel_df)
-        self.triger_monitor_df = self.sel_df[(self.sel_df.monitor == 1) & (self.sel_df.inc_1 >=2.5) & (self.sel_df.inc_2 != -30)]
-        self.monitor_df = self.sel_df[(self.sel_df.monitor == 1) & (self.sel_df.inc_2 != -30)]
-        self.monitor_df.to_csv('monitor_df.csv')
-        self.all_monitor_df = self.sel_df[self.sel_df.inc_1 >=2.5]
+        day_lenth = 120
+        id_set = set(self.sel_df['stock_id'].to_list())
+        res_df = pd.DataFrame(columns=('id','up_rate','grade','long'))
+        for id in id_set:
+            print('id:',id)
+            single_df = self.sel_df[self.sel_df.stock_id == id]
+            single_df.reset_index(inplace=True, drop=True)
+            grade = single_df.loc[0,'zhuang_grade']
+            section_lastest_day = eval(single_df.loc[0,'zhuang_section'])[0][0][0:10]
+            print('section_lastest_day:',section_lastest_day)
+            pice_start = single_df[single_df.trade_date == section_lastest_day].index[0]
+            pice_end = 0
+            if pice_start >day_lenth:
+                pice_end = pice_start -day_lenth
+            price_start = single_df.loc[pice_start,'close_price']
+            print('pice_end:',pice_end,'pice_start:',pice_start)
+            price_end = max(single_df['close_price'][pice_end:pice_start-1])
+            up_rate = (price_end/price_start-1)*100
+            max_price_index_list = single_df[single_df.close_price == price_end].index
+            print('max_price_index_list:',max_price_index_list)
+            max_price_index_l = []
+            for index in max_price_index_list:
+                if pice_end <=index <= pice_start :
+                    max_price_index_l.append(index)
+            # max_price_index =
+            long = pice_start - max_price_index_l[-1]
+            res_df.loc[len(res_df)] = [id,up_rate,grade,long]
+        print('均值：',res_df['up_rate'].mean())
+
+
+        self.all_monitor_df = res_df
     def deal_factor_data(self):
         self.factor_list = []
         self.triger_monitor_df.reset_index(drop=True,inplace=True)
@@ -84,15 +102,8 @@ class pic:
         self.select()
         self.deal_data()
         # ax = self.sel_df.plot.scatter(x='grade', y='inc_2',color = 'Green',label = 'g1')
-        df =self.triger_monitor_df
-        df.plot.scatter(x='grade', y='inc_2',s=2,c='Green',figsize=(15,15),)
-        lenth = len(df)
-        mean = df['inc_2'].mean()
-        print('总数：{}，平均数：{}'.format(lenth,mean))
-        w_df = df[df.grade >= 10000]
-        lenth = len(w_df)
-        mean = w_df['inc_2'].mean()
-        print('10000以上总数：{}，平均数：{}'.format(lenth, mean))
+        df =self.all_monitor_df
+        df.plot.scatter(x='long', y='up_rate',s=2,c='Green',figsize=(15,15),)
         plt.show()
         # self.triger_monitor_df.plot.scatter(x='grade', y='inc_2')
         # plt.show()
@@ -127,6 +138,6 @@ class pic:
         plt.show()
 
 if __name__ == '__main__':
-    p =pic('2020-01-01','2021-10-31')
+    p =pic('2018-01-01','2021-11-30')
     p.show_pic()
     # p.show_factor_pic()
