@@ -1,11 +1,6 @@
 # coding:utf-8
-import mpl_finance
-# import tushare as ts
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import pymysql
-from matplotlib import ticker
 from matplotlib.pylab import date2num
 import numpy as np
 import datetime
