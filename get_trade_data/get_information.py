@@ -11,47 +11,46 @@ import logging
 #import threading
 import json
 import datetime
+import pub_uti_a
 
 logging.basicConfig(level=logging.DEBUG, filename='../log/get_information.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 
-def get_df_from_db(sql, db):
-    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    cursor.execute(sql)  # 执行SQL语句
-    data = cursor.fetchall()
-    # 下面为将获取的数据转化为dataframe格式
-    columnDes = cursor.description  # 获取连接对象的描述信息
-    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
-    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
-    cursor.close()
-    return df
+# def get_df_from_db(sql, db):
+#     cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
+#     cursor.execute(sql)  # 执行SQL语句
+#     data = cursor.fetchall()
+#     # 下面为将获取的数据转化为dataframe格式
+#     columnDes = cursor.description  # 获取连接对象的描述信息
+#     columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
+#     df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
+#     cursor.close()
+#     return df
 
-def git_base_info(db):
+'''
+【功能】查詢板塊名與板塊編號映射
+'''
+def get_bk_relation():
+    bk_map = {}
+    sql = "select distinct bk_name,bk_code from bankuai_day_data"
+    res = pub_uti_a.select_from_db(sql)
+    for tup in res:
+        bk_map[tup[0]] = tup[1]
+    return bk_map
+def get_base_info():
     #清除原数据
     # sql = "delete from stock_informations"
     # cursor = db.cursor()
     # cursor.execute(sql)
     # cursor.close()
+    bk_map  = get_bk_relation()
     for num in range(0,1000):
         num_str = '{:0>3d}'.format(num)
-        stock_id =  '600' + num_str
-        get_data(stock_id, db)
-        stock_id =  '601' + num_str
-        # print('stock_id:',stock_id)
-        get_data(stock_id, db)
-        stock_id =  '603' + num_str
-        get_data(stock_id, db)
-        stock_id =  '688' + num_str
-        get_data(stock_id, db)
-        stock_id =  '002' + num_str
-        get_data(stock_id, db)
-        stock_id =  '000' + num_str
-        get_data(stock_id, db)
-        stock_id =  '300' + num_str
-        get_data(stock_id, db)
-def get_data(stock_id,db):
-    cursor = db.cursor()
+        for capital_num in ['600','601','603','688','002','000','300']:
+            stock_id = capital_num + num_str
+            get_data(stock_id, bk_map)
+def get_data(stock_id,bk_map):
     if stock_id[0]=='6':
         url = "http://f10.eastmoney.com/CompanySurvey/CompanySurveyAjax?code=SH{}".format(stock_id)
     elif stock_id[0]=='0' or stock_id[0]=='3':
@@ -70,14 +69,10 @@ def get_data(stock_id,db):
     dchy=re.findall('"sshy":"(.*?)"',text)[0]
     zjhy=re.findall('"sszjhhy":"(.*?)"',text)[0]
     gyrs=re.findall('"gyrs":"(.*?)"',text)[0]
-##    gsjj=re.findall('"gsjj":"(.*?)"',text)[0]
-##    #gsjj = "。公司成立以来,在徐明波董事长的带领下,始终秉承\"以质量求生存,以创新求发展\"的企业经营理念"
-##    print('gsjj1:',gsjj)
-##    gsjj = re.sub('\\"','',gsjj)
-    gsjj = ""
+    gsjj = "" #暫時不需要
     #print('gsjj2:',gsjj)
     jyfw=re.findall('"jyfw":"(.*?)"',text)[0]
-    jyfw = ''
+    jyfw = '' #暫時不需要 需要時需要清洗 \ 符號
     ssrq=re.findall('"ssrq":"(.*?)"',text)[0]
     if ssrq == '--':
         ssrq = '1971-01-01'
@@ -94,27 +89,23 @@ def get_data(stock_id,db):
     mgfxj=re.findall('"mgfxj":"(.*?)"',text)[0]
     h_table = stock_id[-1]
     #print('cym:',cym,dchy,zjhy,gyrs,gsjj,jyfw,ssrq,'fxl:',fxl,qy)
-    try:
-        sql = "insert into stock_informations(stock_id,stock_name,发行量,bk_name,证监会行业," \
-              "上市日期,曾用名,每股发行价,区域,雇员人数,经营范围,公司简介,h_table) " \
-              "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}')" \
-              "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',发行量='{2}',bk_name='{3}'," \
-              "证监会行业='{4}',上市日期='{5}',曾用名='{6}',每股发行价='{7}',区域='{8}',雇员人数='{9}',经营范围='{10}'" \
-              ",公司简介='{11}',h_table='{12}'" \
-            .format(stock_id,agjc,fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,h_table)
-        # sql="update stock_informations set 发行量={0},bk_name='{1}', 证监会行业='{2}', 上市日期='{3}', 曾用名='{4}', 每股发行价='{5}', 区域='{6}', \
-        #     雇员人数='{7}', 经营范围='{8}', 公司简介='{9}' where stock_id = '{10}'\
-        #     ".format(fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,stock_id)
-        print('sql',sql)
-        cursor.execute(sql)
-        db.commit()
-        print('存储完成')
-        logging.info('存储完成:id:{}'.format(stock_id))
-    except Exception as err:
-        db.rollback()
-        print('存储失败:',err)
-        logging.error('存储失败:id:{},{}'.format(stock_id,err))
-    cursor.close()
+    bk_code = ''
+    if dchy != '--':
+        bk_code = bk_map[dchy]
+
+    sql = "insert into stock_informations(stock_id,stock_name,发行量,bk_name,证监会行业," \
+          "上市日期,曾用名,每股发行价,区域,雇员人数,经营范围,公司简介,h_table,bk_code) " \
+          "values ('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}') " \
+          "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',发行量='{2}',bk_name='{3}'," \
+          "证监会行业='{4}',上市日期='{5}',曾用名='{6}',每股发行价='{7}',区域='{8}',雇员人数='{9}',经营范围='{10}'" \
+          ",公司简介='{11}',h_table='{12}',bk_code='{13}'" \
+        .format(stock_id,agjc,fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,h_table,bk_code)
+    # sql="update stock_informations set 发行量={0},bk_name='{1}', 证监会行业='{2}', 上市日期='{3}', 曾用名='{4}', 每股发行价='{5}', 区域='{6}', \
+    #     雇员人数='{7}', 经营范围='{8}', 公司简介='{9}' where stock_id = '{10}'\
+    #     ".format(fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,stock_id)
+    print('sql',sql)
+    pub_uti_a.commit_to_db(sql)
+
 # def deal_info(db):
 #     sql = "select * from stock_informations"
 #     df = get_df_from_db(sql, db)
@@ -168,27 +159,21 @@ def update_other_tab(db):
     cursor.close()
 
 def main(update_flag = 0):
-    db = pymysql.connect(host="192.168.1.99", user="user1", password="Zzl08382020", database="stockdb")
-    # cursor = db.cursor()
-    #get_data(stock_id='603828')#000790
-    #get_data(stock_id='000790')
-    # stock_id_list=select_info(db)
-    #stock_id_list = [('002038',)]
-
-    # for stock in stock_id_list:
-    #     print('stock[0]:',stock[0])
-    #     get_data(stock[0],db)
     if update_flag ==1:
-        git_base_info(db)
-        update_other_tab(db)
+        get_base_info()
+        update_other_tab()
     elif update_flag == 0:
-        git_base_info(db)
+        get_base_info()
     elif update_flag == 2:
-        update_other_tab(db)
-
+        update_other_tab()
 
 
 if __name__ == '__main__':
-    main(update_flag = 1)
+    main(update_flag = 0)
+
+    #test
+    # stock_id ='600824'
+    # bk_map = get_bk_relation()
+    # get_data(stock_id, bk_map)
 
 
