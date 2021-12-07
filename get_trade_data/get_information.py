@@ -12,7 +12,7 @@ import logging
 import json
 import datetime
 
-logging.basicConfig(level=logging.DEBUG, filename='../stock_history_trade.log', filemode='w',
+logging.basicConfig(level=logging.DEBUG, filename='../log/get_information.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
 
@@ -168,7 +168,7 @@ def update_other_tab(db):
     cursor.close()
 
 def main(update_flag = 0):
-    db = pymysql.connect(host="192.168.1.6", user="user1", password="Zzl08382020", database="stockdb")
+    db = pymysql.connect(host="192.168.1.99", user="user1", password="Zzl08382020", database="stockdb")
     # cursor = db.cursor()
     #get_data(stock_id='603828')#000790
     #get_data(stock_id='000790')
