@@ -41,7 +41,7 @@ def main(date):
     response = requests.get(url, headers=header)
     text = response.text
     print('text:', text)
-    data_long_str = re.findall('\((.*?)\)', text)[0]
+    data_long_str = re.findall('\((.*?)\)$', text)[0]
     print('data_long_str:',data_long_str)
     data_json = json.loads(data_long_str)
     print("data_json['Data']:",len(data_json['Data']))
