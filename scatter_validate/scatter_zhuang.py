@@ -138,6 +138,6 @@ class pic:
         plt.show()
 
 if __name__ == '__main__':
-    p =pic('2018-01-01','2021-11-30')
+    p =pic('2018-01-01','2021-12-30')
     p.show_pic()
     # p.show_factor_pic()
