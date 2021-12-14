@@ -11,33 +11,18 @@ import json
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.getcwd()),"config"))
-from readconfig import read_config
-
+import pub_uti_a
+pd.set_option('display.max_columns', None)
 logging.basicConfig(level=logging.DEBUG, filename='../log/comp_zhaung.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 
-def get_df_from_db(sql, db):
-    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    cursor.execute(sql)  # 执行SQL语句
-    data = cursor.fetchall()
-    # 下面为将获取的数据转化为dataframe格式
-    columnDes = cursor.description  # 获取连接对象的描述信息
-    columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
-    df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
-    # df = df.set_index(keys=['trade_date'])
-    df = df.sort_values(axis=0, ascending=True, by='trade_date', na_position='last')
-    df.reset_index(inplace=True)
-    df = df.fillna(0)
-    # df = df.dropna(axis=0, how='any')
-    # df.reset_index(inplace=True)
+def deal_df_data(df):
+    df.fillna(0,inplace=True)
     df['trade_date2'] = df['trade_date'].copy()
-    # print('trade_date2:',type(df['trade_date2'][0]))
     df['trade_date2'] = pd.to_datetime(df['trade_date2']).map(date2num)
     df['dates'] = np.arange(0, len(df))
     df['arv_10'] = df['close_price'].rolling(10).mean()
     df['arv_5'] = df['close_price'].rolling(5).mean()
-    # df['increase'] = df['increase'].astype('float')
-    # df.loc[-1.5<float(df['increase'])<1.5,'increase_flag'] = 1 #increase 是str
     df['increase_flag'] = 0
     df['increase_abs'] = 0
     for i in range(1,len(df)-1):
@@ -47,12 +32,9 @@ def get_df_from_db(sql, db):
         df.loc[i, 'increase'] = (df.loc[i,'close_price']-df.loc[i-1,'close_price']) / df.loc[i-1,'close_price']*100
         if -2 <= float(df.loc[i,'increase']) <=2:
             df.loc[i, 'increase_flag'] = 1
-    cursor.close()
-    # print(df)
-    # df['trade_date'] = date2num(df['trade_date'])
     print('df:', df[['increase','increase_flag']])
     return df
-def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45):
+def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45,lasheng_pice = 100):
     zhuang_grade = 0
     zhuang_long = 0
     max_avg_rate = 0
@@ -118,8 +100,8 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45):
             if df['close_price'][ind_end:len(df)-1].max() / avg >= 1.3:
                 lasheng_flag = 1
             if len(df) - ind_end >60:
-                #计算庄线后60个交易日内最大值
-                max_value = df['close_price'][ind_end:ind_end+60].max()
+                #计算庄线后100个交易日内最大值
+                max_value = df['close_price'][ind_end:ind_end+lasheng_pice].max()
                 #计算极值对平均值倍数
                 beishu = max_value*10 // avg
                 print('倍数：',beishu)
@@ -127,9 +109,11 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45):
                     beishu = 99
                 zhuang_grade += beishu * 1000000
                 #计算极值距离时间
-                max_ind_list = df.query("close_price == '{}'".format(max_value)).index
-                max_ind = (max_ind_list & list(range(ind_end,ind_end+61)))[0]
-                print('index 列表：',max_ind_list & list(range(ind_end,ind_end+61)))
+                # max_ind_list = df.query("close_price == '{}'".format(max_value)).index
+                max_ind_list = df[df.close_price ==max_value].index.to_list()
+                ind_max = (ind_end+lasheng_pice+1) if (ind_end+lasheng_pice+1) < len(df) else len(df)
+                max_ind = list(set(max_ind_list) & set(range(ind_end,ind_max)))[0]
+                # print('index 列表：',max_ind_list & list(range(ind_end,ind_end+lasheng_pice+1)))
                 print('极值时间差：',max_ind , ind_end,max_ind - ind_end)
                 zhuang_grade += (max_ind - ind_end) * 10000
 
@@ -155,66 +139,34 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45):
         for key in date_dict:
             zhuang_date.append((key,date_dict[key]))
     return zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag
-def save(db, ids, stock_name,zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag):
-
-    cursor = db.cursor()
-    try:
-        print('zhuang_grade:', zhuang_grade)
-
-        sql = "insert into com_zhuang(stock_id,stock_name,zhuang_grade,zhuang_section,yidong,zhuang_long,max_avg_rate,lasheng_flag) \
-            values('{0}','{1}','{2}',\"{3}\",\"{4}\",'{5}','{6}','{7}') " \
+def main(num, start_t, end_t):
+    num = str(num)
+    if start_t != None and end_t != None:
+        sql = "SELECT stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price,increase  FROM stock_trade_data \
+                where trade_date >= '{0}' and trade_date <= '{1}' and stock_id like '%{2}'".format(start_t, end_t,num)
+    else:
+        sql = "SELECT stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price,increase  " \
+              "FROM stock_trade_data where stock_id like '%{0}' ".format(num)
+    df = pub_uti_a.creat_df(sql,ascending=True)
+    id_set = set(df['stock_id'].to_list())
+    s = pub_uti_a.save()
+    for id in id_set:
+        single_df = df[df.stock_id == id]
+        single_df.reset_index(drop=True,inplace=True)
+        print('single_df:',single_df)
+        single_df = deal_df_data(single_df)
+        zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag = compt_core(single_df)
+        insert_sql = "insert into com_zhuang(stock_id,stock_name,zhuang_grade,zhuang_section,yidong,zhuang_long,max_avg_rate,lasheng_flag) " \
+              "values('{0}','{1}','{2}',\"{3}\",\"{4}\",'{5}','{6}','{7}') " \
               "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',zhuang_grade='{2}',zhuang_section=\"{3}\"," \
-              "yidong=\"{4}\",zhuang_long = '{5}' ,max_avg_rate = '{6}',lasheng_flag='{7}' \
-            ".format(ids, stock_name,zhuang_grade,zhuang_date,yidong,zhuang_long,max_avg_rate,lasheng_flag)
-        print('sql:', sql)
-        cursor.execute(sql)
-        db.commit()
-        print('存储完成')
-        logging.info('存储完成:id:{},name:{}'.format(ids, stock_name))
-    except Exception as err:
-        db.rollback()
-        print('存储失败:', err)
-        logging.error('存储失败:id:{},name:{}\n{}'.format(ids, stock_name, err))
-    cursor.close()
-def main(h_tab, start_t, end_t):
-    db_config = read_config('db_config')
-    db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
-    cursor = db.cursor()  # 使用cursor()方法获取用于执行SQL语句的游标
-    sql = "select distinct  stock_id,stock_name from stock_informations where h_table = '{0}'".format(h_tab)
-    #临时补漏
-    # sql = "select distinct  h.stock_id,h.stock_name from stock_history_trade{0} h " \
-    #       "right join com_zhuang c " \
-    #       "on h.stock_id = c.stock_id " \
-    #       "where c.zhuang_grade / 10000000 < 10 and c.zhuang_grade / 10000000 >= 1".format(h_tab)
-    cursor.execute(sql)
-    stock_id_list = cursor.fetchall()
-    # stock_id_list = [('600121','郑州煤电'),] #测试数据 h_tab = 3
-    # stock_id_list = [('600165', '新日恒力'), ] #h_tab = 1
-    # stock_id_list = [('603967', '中创物流'), ] #h_tab = 2
-    # stock_id_list = [('002889', '东方嘉盛'), ] #h_tab = 6
-    # stock_id_list = [('002958', '青农商行'), ]  # h_tab = 6
-    # stock_id_list = [('002221', '东华能源'), ]  # h_tab = 8
-    # stock_id_list = [('603331', '百达精工'), ]  # h_tab = 3
-    # stock_id_list = [('000937', '冀中能源'), ]  # h_tab = 9
-    for ids_tuple in stock_id_list:
-        # zhuang_grade = 1
-        # zhuang_json = {}
-        ids = ids_tuple[0]
-        if start_t != None and end_t != None:
-            sql = "SELECT stock_id,trade_date,open_price,close_price,high_price,low_price,increase  FROM stock_trade_data \
-                    where  stock_id  = '{2}' and trade_date >= '{0}' and trade_date <= '{1}' ".format( start_t, end_t,ids)
-        else:
-            sql = "SELECT stock_id,trade_date,open_price,close_price,high_price,low_price,increase  FROM stock_trade_data \
-                    where stock_id  = '{0}'".format(ids)
-        df = get_df_from_db(sql, db)
-        # print('flag1')
-        zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag = compt_core(df)
-        save(db, ids, ids_tuple[1], zhuang_date, zhuang_grade, yidong,zhuang_long,max_avg_rate,lasheng_flag)
+              "yidong=\"{4}\",zhuang_long = '{5}' ,max_avg_rate = '{6}',lasheng_flag='{7}' " \
+              "".format(id, single_df.loc[0,'stock_name'], zhuang_grade, zhuang_date, yidong, zhuang_long, max_avg_rate, lasheng_flag)
+        s.add_sql(insert_sql)
+    s.commit()
 def run(start_t, end_t):
-    p = Pool(8)
+    p = Pool(10)
     for i in range(0, 10):
-        p.apply_async(main, args=(str(i), start_t, end_t,))
-    #    p.apply_async(main, args=('1',date,))
+        p.apply_async(main, args=(i, start_t, end_t,))
     print('Waiting for all subprocesses done...')
     p.close()
     p.join()
@@ -224,7 +176,6 @@ if __name__ == '__main__':
     end_t = None#'2021-01-14'
     start_time = datetime.datetime.now()
 
-    # h_tab = 9
-    # main(h_tab, start_t, end_t)
-    run(start_t, end_t)
+    main(9, start_t, end_t)
+    # run(start_t, end_t)
     print('耗时:', datetime.datetime.now() - start_time)
