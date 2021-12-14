@@ -49,7 +49,7 @@ class creat_df_from_db:
         columnNames = [columnDes[i][0] for i in range(len(columnDes))]  # 获取列名
         df = pd.DataFrame([list(i) for i in data], columns=columnNames)  # 得到的data为二维元组，逐行取出，转化为列表，再转化为df
         if 'trade_date' in df.columns:
-            #ascending 默认true 升序
+            #ascending true 升序
             df = df.sort_values(axis=0, ascending=ascending, by='trade_date', na_position='last')
             df.reset_index(inplace=True)
             df['trade_date'] = df['trade_date'].apply(lambda x:x.strftime("%Y-%m-%d"))
