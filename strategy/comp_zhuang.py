@@ -139,6 +139,59 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45,lasheng
         for key in date_dict:
             zhuang_date.append((key,date_dict[key]))
     return zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag
+#臨時功能，附加計算出section最後時間節點
+def com_lastest_point():
+    sql = "select stock_id,zhuang_section from com_zhuang where zhuang_grade > 0"
+    df = pub_uti_a.creat_df(sql)
+    s = pub_uti_a.save()
+    def map(raw):
+        zhuang_section = eval(raw['zhuang_section'])
+        if len(zhuang_section) == 0:
+            return raw
+        sql = "update com_zhuang set lastest_target= '{0}' where stock_id ='{1}'".format(zhuang_section[0][0],raw['stock_id'])
+        s.add_sql(sql)
+        return raw
+    df.apply(map,axis=1)
+    s.commit()
+#計算放量信號
+def com_volume_signal(date=None,long = 120,avg_roll = 10,signal_threshold = 2):
+    if date == None:
+        sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') from stock_trade_data"
+        date = pub_uti_a.select_from_db(sql)[0][0]
+    print('date:',date)
+    start_date = datetime.datetime.strftime((datetime.datetime.strptime(date[0:10],'%Y-%m-%d') - datetime.timedelta(days=long)),'%Y-%m-%d')
+    trade_sql = "select T.stock_id,T.trade_date,T.turnover_rate " \
+                " from (select stock_id from com_zhuang where lastest_target>= '{0}') Z " \
+                "LEFT JOIN stock_trade_data T " \
+                "ON Z.stock_id = T.stock_id " \
+                "WHERE T.trade_date >= '{0}' and T.trade_date<= '{1}'".format(start_date,date)
+    df = pub_uti_a.creat_df(trade_sql,ascending=True)
+    id_set = set(df['stock_id'].to_list())
+    volume_signal_map = {}
+    clean_sql = "delete from zhuang_day_grade where com_date = '{}'".format(date)
+    pub_uti_a.commit_to_db(clean_sql)
+    s = pub_uti_a.save()
+    for id in id_set:
+        single_df = df[df.stock_id == id]
+        single_df.reset_index(drop=True,inplace=True)
+        single_df['avg'] = single_df['turnover_rate'].rolling(avg_roll).mean()
+        single_df['avg'] =single_df['avg'].shift(1)
+        single_df['avg'].fillna(100,inplace=True)
+        single_df['volume_signal'] = single_df['turnover_rate']/single_df['avg']
+        # print('single_df', single_df)
+        index_list = single_df[single_df['volume_signal'] >= signal_threshold].index.to_list()
+        print('index_list:',index_list)
+        if len(index_list)!= 0 and index_list[0] >= (len(single_df)-3):
+            trade_code = re.sub('-','',date)+id
+            grade = 50
+            sql = "insert into zhuang_day_grade (trade_code,com_date,stock_id,grade) " \
+                  "VALUES ('{0}','{1}','{2}',{3})".format(trade_code,date,id,grade)
+            print('sql:',sql)
+            s.add_sql(sql)
+            volume_signal_map[id] = grade
+    s.commit()
+    print('volume_signal_map:',volume_signal_map)
+
 def main(num, start_t, end_t):
     num = str(num)
     if start_t != None and end_t != None:
@@ -176,6 +229,8 @@ if __name__ == '__main__':
     end_t = None#'2021-01-14'
     start_time = datetime.datetime.now()
 
-    main(9, start_t, end_t)
+    # main(9, start_t, end_t)
     # run(start_t, end_t)
+    # com_lastest_point()
+    com_volume_signal()
     print('耗时:', datetime.datetime.now() - start_time)
