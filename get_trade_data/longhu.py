@@ -66,6 +66,8 @@ def deal_data(single_str,data_list_save):
     jmrate = info_list[14]
     all_trade_rate = info_list[15]
     turnover = info_list[4]
+    if turnover == '':
+        turnover = -1 #異常值
     print('turnover:',turnover)
     lt_value = 0#info_list[0]
     jd = info_list[43]
@@ -83,7 +85,7 @@ def deal_data(single_str,data_list_save):
               ",all_trade_rate='{11}',turnover='{12}',lt_value='{13}',jd='{14}'" \
             .format(trade_code,stock_id,stock_name,trade_date,jmmoney,bmoney,smoney,lh_trade_money,
                     all_trade_money,reson,jmrate,all_trade_rate,turnover,lt_value,jd)
-        # print('sql:',sql)
+        print('sql:',sql)
         cursor.execute(sql)
         db.commit()
         print('存储完成:id:{},name:{},trade_date:{}'.format(stock_id, stock_name, trade_date))
