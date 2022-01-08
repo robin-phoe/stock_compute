@@ -41,9 +41,10 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45,lasheng
     lasheng_flag = 0
     yidong = []
     zhuang_date = []
+    lastest_target = '1971-01-01'
     if len(df) <= 200:
         print('少于200条记录')
-        return zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag
+        return zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag,lastest_target
     #时间正序
     df['piece_flag_sum'] = df.increase_flag.rolling(piece).sum()
     df['increase_abs_sum'] = df.increase_flag.rolling(piece).sum()
@@ -55,7 +56,7 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45,lasheng
             break
         behind_cp = df.loc[i,'close_price']
         front_cp = df.loc[i-piece,'close_price']
-        print('斜率：',abs(behind_cp - front_cp) / front_cp)
+        # print('斜率：',abs(behind_cp - front_cp) / front_cp)
         if abs(behind_cp - front_cp) / front_cp > xielv:
             continue
         print('斜率达标：',df.loc[i,'trade_date'])
@@ -138,7 +139,8 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45,lasheng
     if len(date_dict) != 0:
         for key in date_dict:
             zhuang_date.append((key,date_dict[key]))
-    return zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag
+        lastest_target = zhuang_date[0][0]
+    return zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag,lastest_target
 #臨時功能，附加計算出section最後時間節點
 def com_lastest_point():
     sql = "select stock_id,zhuang_section from com_zhuang where zhuang_grade > 0"
@@ -153,7 +155,11 @@ def com_lastest_point():
         return raw
     df.apply(map,axis=1)
     s.commit()
-#計算放量信號
+'''
+【功能】计算庄线放量信号
+庄线最后日期(lastest_target)在120日内
+换手前10日平均值的2倍
+'''
 def com_volume_signal(date=None,long = 120,avg_roll = 10,signal_threshold = 2):
     if date == None:
         sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') from stock_trade_data"
@@ -208,12 +214,12 @@ def main(num, start_t, end_t):
         single_df.reset_index(drop=True,inplace=True)
         print('single_df:',single_df)
         single_df = deal_df_data(single_df)
-        zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag = compt_core(single_df)
-        insert_sql = "insert into com_zhuang(stock_id,stock_name,zhuang_grade,zhuang_section,yidong,zhuang_long,max_avg_rate,lasheng_flag) " \
-              "values('{0}','{1}','{2}',\"{3}\",\"{4}\",'{5}','{6}','{7}') " \
+        zhuang_date,zhuang_grade,yidong,zhuang_long,max_avg_rate,lasheng_flag,lastest_target = compt_core(single_df)
+        insert_sql = "insert into com_zhuang(stock_id,stock_name,zhuang_grade,zhuang_section,yidong,zhuang_long,max_avg_rate,lasheng_flag,lastest_target) " \
+              "values('{0}','{1}','{2}',\"{3}\",\"{4}\",'{5}','{6}','{7}','{8}') " \
               "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',zhuang_grade='{2}',zhuang_section=\"{3}\"," \
-              "yidong=\"{4}\",zhuang_long = '{5}' ,max_avg_rate = '{6}',lasheng_flag='{7}' " \
-              "".format(id, single_df.loc[0,'stock_name'], zhuang_grade, zhuang_date, yidong, zhuang_long, max_avg_rate, lasheng_flag)
+              "yidong=\"{4}\",zhuang_long = '{5}' ,max_avg_rate = '{6}',lasheng_flag='{7}',lastest_target='{8}' " \
+              "".format(id, single_df.loc[0,'stock_name'], zhuang_grade, zhuang_date, yidong, zhuang_long, max_avg_rate, lasheng_flag ,lastest_target)
         s.add_sql(insert_sql)
     s.commit()
 def run(start_t, end_t):
