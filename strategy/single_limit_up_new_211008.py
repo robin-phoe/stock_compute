@@ -102,7 +102,7 @@ class stock:
             self.limit_type = 'wave'
             self.com_wave_grade()
             return
-        #剩余是标准型
+        #剩余是标准型 todo 标准型需要条件筛选
         self.limit_type = 'standard'
         self.com_standard_grade()
     '''
@@ -256,46 +256,53 @@ class stock:
     【功能】计算標準型分数 standard
     '''
     '''
-    标准波变量因子：1、前期走势20；2、涨停后平缓程度40； 3、涨停后一日冒高程度20；4、涨停前涨幅20；5、换手热门程度(预留)
+    标准波变量因子：1、前期走势20；2、涨停后平缓程度30； 3、涨停后一日冒高程度40；4、涨停前涨幅20；5、换手热门程度(预留)
     '''
     def com_standard_grade(self):
         wave_multiple = 200  # 内函数总分50 * 200 =10000
         grade = 0
-        # 漲停前趨勢得分 30
+        # 漲停前趨勢得分 20
+        delta_before_base_grade = 20
         break_flag = self.com_before_trend()
         if break_flag == 0:
             return 0
         print('漲停前差值：{}，漲停前斜率：{}'.format(self.bofore_delta_inc, self.before_slope))
         self.factor['bofore_delta_inc'] = self.bofore_delta_inc
         self.factor['before_slope'] = self.before_slope
-        trend_grade = (1 / (1 + (self.bofore_delta_inc / 30) * (
-                    self.before_slope / 4))) * 30  # (1/((回落量/2) * (斜率/2) )) * 30
+        trend_grade = (1 / (1 + (self.bofore_delta_inc / delta_before_base_grade) * (
+                    self.before_slope / 4))) * delta_before_base_grade  # (1/((回落量/2) * (斜率/2) )) * 30
         self.factor['trend_grade'] = trend_grade
         grade += trend_grade
-        #涨停后第二日无冒高20
+        #涨停后第二日无冒高40
+        delta_rate_base_grade = 40
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
+        lastest_limit_o_price = self.single_df.loc[self.lastest_limit_index, 'open_price']
         three_c_price = self.single_df.loc[self.lastest_limit_index-1,'close_price']
+        three_o_price = self.single_df.loc[self.lastest_limit_index - 1, 'open_price']
         three_h_price = self.single_df.loc[self.lastest_limit_index - 1, 'high_price']
         delta_rate_c = three_c_price / lastest_limit_c_price
+        delta_rate_o = three_c_price / lastest_limit_o_price
         delta_rate_h = three_h_price / lastest_limit_c_price
+        delta_rate_m = (delta_rate_c +delta_rate_o)/2
         self.factor['delta_rate_c'] = delta_rate_c
         self.factor['delta_rate_h'] = delta_rate_h
-        if delta_rate_c > 1.05:
-            three_inc_grade = 0
-        elif delta_rate_c > 1.03 and delta_rate_h <=1.07:
-            three_inc_grade = 10
-        elif delta_rate_c > 1.02 and delta_rate_h <=1.05 :
-            three_inc_grade = 15
+        if delta_rate_m < 0.97:
+            three_inc_grade = delta_rate_base_grade * 1
+        elif delta_rate_m <= 1:
+            three_inc_grade = delta_rate_base_grade * 0.8
+        elif delta_rate_m < 1.015:
+            three_inc_grade = delta_rate_base_grade * 0.5
         else:
-            three_inc_grade = 20
+            three_inc_grade = delta_rate_base_grade * 0
         grade += three_inc_grade
         self.factor['three_inc_grade'] = three_inc_grade
-        #涨停后走势（要平缓）30
+        #涨停后走势（要平缓）20
+        delta_after_base_grade = 20
         self.com_fall_data()
         amplitude_value = (self.standard_amplitude -1) + (self.extreme_amplitude -2.5)
         self.factor['amplitude_value'] = amplitude_value
         amplitude_value = amplitude_value if amplitude_value > 0 else 0
-        amplitude_grade = (1/(1+amplitude_value))*30
+        amplitude_grade = (1/(1+amplitude_value))*delta_after_base_grade
         grade += amplitude_grade
         #涨停前已有涨幅 [-20,20]
         inc_param = 0
@@ -584,8 +591,8 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    date ='2021-08-10' #'2021-01-20'
-    st_buff = stock_buffer(date)
-    st_buff.init_buffer()
-    # history(start_date= '2020-01-01', end_date= '2021-10-31')
+    # date ='2022-01-17'#None #'2021-01-20'
+    # st_buff = stock_buffer(date)
+    # st_buff.init_buffer()
+    history(start_date= '2021-01-01', end_date= '2021-12-31')
     print('completed.')

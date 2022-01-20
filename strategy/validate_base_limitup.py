@@ -7,10 +7,6 @@ import pandas as pd
 import datetime
 import re
 import pub_uti_a
-import mpl_finance
-import matplotlib.pyplot as plt
-from matplotlib import ticker
-import numpy as np
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
