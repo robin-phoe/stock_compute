@@ -256,13 +256,13 @@ class stock:
     【功能】计算標準型分数 standard
     '''
     '''
-    标准波变量因子：1、前期走势20；2、涨停后平缓程度30； 3、涨停后一日冒高程度40；4、涨停前涨幅20；5、换手热门程度(预留)
+    标准波变量因子：1、前期走势30；2、涨停后平缓程度30； 3、涨停后一日冒高程度20；4、涨停前涨幅20；5、换手热门程度(预留)
     '''
     def com_standard_grade(self):
-        wave_multiple = 200  # 内函数总分50 * 200 =10000
+        wave_multiple = 200  # 内函数总分100 * 200 =20000
         grade = 0
-        # 漲停前趨勢得分 20
-        delta_before_base_grade = 20
+        # 漲停前趨勢得分 30
+        delta_before_base_grade = 30
         break_flag = self.com_before_trend()
         if break_flag == 0:
             return 0
@@ -273,8 +273,8 @@ class stock:
                     self.before_slope / 4))) * delta_before_base_grade  # (1/((回落量/2) * (斜率/2) )) * 30
         self.factor['trend_grade'] = trend_grade
         grade += trend_grade
-        #涨停后第二日无冒高40
-        delta_rate_base_grade = 40
+        #涨停后第二日无冒高20
+        delta_rate_base_grade = 20
         lastest_limit_c_price = self.single_df.loc[self.lastest_limit_index,'close_price']
         lastest_limit_o_price = self.single_df.loc[self.lastest_limit_index, 'open_price']
         three_c_price = self.single_df.loc[self.lastest_limit_index-1,'close_price']
@@ -286,6 +286,7 @@ class stock:
         delta_rate_m = (delta_rate_c +delta_rate_o)/2
         self.factor['delta_rate_c'] = delta_rate_c
         self.factor['delta_rate_h'] = delta_rate_h
+        #涨停次日低走附加 50
         if delta_rate_m < 0.97:
             three_inc_grade = delta_rate_base_grade * 1
         elif delta_rate_m <= 1:
@@ -296,8 +297,8 @@ class stock:
             three_inc_grade = delta_rate_base_grade * 0
         grade += three_inc_grade
         self.factor['three_inc_grade'] = three_inc_grade
-        #涨停后走势（要平缓）20
-        delta_after_base_grade = 20
+        #涨停后走势（要平缓）30
+        delta_after_base_grade = 30
         self.com_fall_data()
         amplitude_value = (self.standard_amplitude -1) + (self.extreme_amplitude -2.5)
         self.factor['amplitude_value'] = amplitude_value
