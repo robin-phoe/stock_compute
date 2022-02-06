@@ -97,7 +97,7 @@ def compt_core(df,xielv=0.02,day_rate = 0.7,limit_count = 740,piece = 45,lasheng
             if max_avg_rate >= 10000:
                 max_avg_rate = 9000
             zhuang_grade += max_avg_rate
-            #计算是否已拉升过，标准是百分之三十
+            #计算是否已拉升过，标准是百分之三十   【bug?】拉升区间判断在df结束，历史数据验证时是否不正确
             if df['close_price'][ind_end:len(df)-1].max() / avg >= 1.3:
                 lasheng_flag = 1
             if len(df) - ind_end >60:
@@ -235,7 +235,6 @@ if __name__ == '__main__':
     end_t = None#'2021-01-14'
     start_time = datetime.datetime.now()
 
-    # main(9, start_t, end_t)
     # run(start_t, end_t)
     # com_lastest_point()
     com_volume_signal()
