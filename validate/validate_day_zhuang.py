@@ -52,30 +52,33 @@ class single_stock:
             return 0
         self.interval = 5
         len_df = len(self.single_df)
+        buy_price = self.single_df.loc[index,'close_price']
+        def delta_fun(interval):
+            close_list = self.single_df['close_price'].to_list()[index:index + interval]
+            min_delta = (min(close_list) / buy_price - 1) * 100
+            max_delta = (max(close_list) / buy_price - 1) * 100
+            delta = max_delta if max_delta>abs(min_delta) else min_delta
+            return delta
         #信号后5日极值价差
         interval = 5
         delta_5 = 0
         if index+interval <= len_df:
-            close_list = self.single_df['close_price'].to_list()[index:index+interval]
-            delta_5 =(max(close_list)/min(close_list)-1)*100
+            delta_5 =delta_fun(interval)
         #信号后14日极值价差
         interval = 14
         delta_14 = 0
         if index+interval <= len_df:
-            close_list = self.single_df['close_price'].to_list()[index:index+interval]
-            delta_14 =(max(close_list)/min(close_list)-1)*100
+            delta_14 =delta_fun(interval)
         #信号后20日极值价差
         interval = 20
         delta_20 =0
         if index+interval <= len_df:
-            close_list = self.single_df['close_price'].to_list()[index:index+interval]
-            delta_20 =(max(close_list)/min(close_list)-1)*100
+            delta_20 =delta_fun(interval)
         #信号后40日极值价差
         interval = 40
         delta_40 =0
         if index+interval <= len_df:
-            close_list = self.single_df['close_price'].to_list()[index:index+interval]
-            delta_40 =(max(close_list)/min(close_list)-1)*100
+            delta_40 =delta_fun(interval)
         print('result:',delta_5,delta_14,delta_20,delta_40)
         self.result_df.loc[len(self.result_df)] = [self.id,self.name,self.single_df.loc[index,'trade_date'],
                                                    delta_5,delta_14,delta_20,delta_40]
@@ -114,7 +117,7 @@ class stock_buffer:
             single_result = single_stock(single_df,self.section_dict[id]).run()
             self.result_df = pd.concat([self.result_df,single_result],axis=0)
         print('self.result_df:',self.result_df)
-        self.result_df.to_excel('./validate_report/result_df.xlsx',index=False,encoding='utf-8')
+        self.result_df.to_excel('./validate_result/zhuang_shouyi_validate.xlsx',index=False,encoding='utf-8')
 
 if __name__ == '__main__':
     stock_buffer().run()
