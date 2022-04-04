@@ -24,7 +24,7 @@
 3、庄线长度。     切片起始至结束*10    最大900
 
 启动因素：
-1、换手量升高，换手前10日平均值的2倍
+1、info:single,single2,hat,highland
 """
 import pandas as pd
 
