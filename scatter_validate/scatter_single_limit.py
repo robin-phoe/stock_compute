@@ -16,15 +16,15 @@ class pic:
         self.n_monitor_df = None
     def select(self):
         #standard  v_rebound   double_limit   wave
-        # sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor,l.type,l.factor " \
-        #       " from stock_trade_data s " \
-        #       " LEFT JOIN (select * from limit_up_single_validate where type = 'v_rebound' and trade_date >='{0}' and trade_date <='{1}') l " \
-        #       " ON s.trade_code = l.trade_code " \
-        #       " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
-        sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor from stock_trade_data s " \
-              " LEFT JOIN (select * from remen_xiaoboxin where  trade_date >='{0}' and trade_date <='{1}') l " \
+        sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor,l.type,l.factor " \
+              " from stock_trade_data s " \
+              " LEFT JOIN (select * from limit_up_single_validate where type = 'wave' and trade_date >='{0}' and trade_date <='{1}') l " \
               " ON s.trade_code = l.trade_code " \
               " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
+        # sql = "select s.trade_date,s.stock_id,s.high_price,s.low_price,s.close_price,s.increase,l.grade,l.monitor from stock_trade_data s " \
+              # " LEFT JOIN (select * from remen_xiaoboxin where  trade_date >='{0}' and trade_date <='{1}') l " \
+              # " ON s.trade_code = l.trade_code " \
+              # " where s.trade_date >='{0}' and s.trade_date <='{1}' ".format(self.start_date,self.end_date)
         self.sel_df = pub_uti_a.creat_df(sql)
         self.sel_df.to_csv('record_sel.csv')
     def deal_data(self):
@@ -127,6 +127,6 @@ class pic:
         plt.show()
 
 if __name__ == '__main__':
-    p =pic('2020-01-01','2021-10-31')
+    p =pic('2020-01-01','2021-12-31')
     p.show_pic()
     # p.show_factor_pic()
