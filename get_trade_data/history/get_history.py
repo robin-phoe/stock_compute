@@ -95,6 +95,14 @@ def get_data(table,stock_id,cursor,db,start_date,end_date):
         sql="insert into stock_trade_data(trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price," \
             "low_price,trade_amount,trade_money,circulation,capital_stock,turnover_rate) \
             values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+        sql="insert into stock_trade_data(trade_code,stock_name,stock_id,trade_date,close_price,increase," \
+                    "open_price,turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money) " \
+                    "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')" \
+                    "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_name='{1}',stock_id='{2}',trade_date='{3}'," \
+                    "close_price='{4}',increase='{5}',open_price='{6}',turnover_rate='{7}'," \
+                    "P_E='{8}',P_B='{9}',high_price='{10}',low_price='{11}',trade_amount='{12}',trade_money='{13}'" \
+                    .format(trade_code,data['f14'],data['f12'],date_str,data['f2'],data['f3'],data['f17'],
+                            data['f8'],data['f9'],data['f23'],data['f15'],data['f16'],data['f5'],data['f6'])
         cursor.executemany(sql, val_insert)
         #更新
         # sql = "update stock_history_trade{} set trade_code=%s,stock_id=%s,stock_name=%s,trade_date=%s,open_price=%s,close_price=%s," \
@@ -145,8 +153,8 @@ def run(start_date,end_date):
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    start_date = '2018-01-01'
-    end_date = '2021-04-30'
+    start_date = '2022-02-16'
+    end_date = '2022-04-07'
     run(start_date,end_date)
     # make_one_table(0,start_date,end_date)
 
