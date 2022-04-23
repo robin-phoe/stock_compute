@@ -1,3 +1,4 @@
+#验证版本
 # coding:utf-8
 '''
 # 211008 优化版
@@ -592,8 +593,8 @@ def history(start_date,end_date):
 
 
 if __name__ == '__main__':
-    # date ='2022-01-17'#None #'2021-01-20'
-    # st_buff = stock_buffer(date)
-    # st_buff.init_buffer()
-    history(start_date= '2021-01-01', end_date= '2021-12-31')
+    date ='2022-04-15'#None #'2021-01-20'
+    st_buff = stock_buffer(date)
+    st_buff.init_buffer()
+    # history(start_date= '2021-01-01', end_date= '2021-12-31')
     print('completed.')
