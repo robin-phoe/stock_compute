@@ -119,6 +119,7 @@ class save:
             print('存储失败:', err)
             logging.error('存储失败:{}'.format(err))
         self.cursor.close()
+        self.db.close()
 """
 【功能】df存储到mysql
 """
