@@ -158,7 +158,8 @@ class main:
         cf = creat_df_from_db()
         sql = "select stock_name,trade_date,high_price,low_price from stock_trade_data " \
               "where stock_id = '000892' and trade_date >= '2020-10-01' "
-        self.df = cf.creat_df(sql)
+        # self.df = cf.creat_df(sql)
+        self.df =pub_uti_a.creat_df(sql,ascending=False)
     def compute(self):
         self.select_df()
         cp =com_point()
@@ -185,7 +186,8 @@ class history:
             pub_uti_a.commit_to_db(clean_sql)
             sql = "select stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price from stock_trade_data " \
                   "where trade_date >= '{}' ".format(self.date)
-        self.df = cf.creat_df(sql)
+        # self.df = cf.creat_df(sql)
+        self.df = pub_uti_a.creat_df(sql)
     def core(self):
         self.select_df()
         # print('stock_id:',self.df['stock_id'].tolist())
@@ -215,7 +217,7 @@ class history:
         save_trade.commit()
         print('耗时：',datetime.datetime.now() - start)
 def run(date):
-    p = Pool(8)
+    p = Pool(4)
     for i in range(0, 10):
         his = history(date,str(i))
         p.apply_async(his.core)
@@ -226,10 +228,9 @@ def run(date):
     print('All subprocesses done.')
 if __name__ == '__main__':
     db_config = read_config('db_config')
-    db = pymysql.connect(host=db_config["host"], user=db_config["user"], password=db_config["password"], database=db_config["database"])
     # m = main()
     # m.compute()
 
-    h = history(date='2020-10-01')
+    h = history(date='2021-05-01')
     h.core()
     # run(date='2021-05-01')
