@@ -23,9 +23,6 @@ class compute_base_data:
             print('singel index:',single_df.index)
             single_df['increase'] = (single_df['close_price']/single_df['pre_close']-1) * 100
             for idx,raw in single_df.iterrows():
-            # len_df =len(single_df)
-            # for i in range(len_df):
-            #     raw = single_df.loc[i]
                 sql = "update stock_trade_data set increase={} where trade_code = '{}'".format(raw['increase'],raw['trade_code'])
                 print(sql)
                 s.add_sql(sql)
@@ -34,5 +31,5 @@ class compute_base_data:
 
 
 if __name__ == '__main__':
-    compute_base_data('2022-02-16','2022-04-07').comput_increase()
+    compute_base_data('2022-04-07','2022-04-15').comput_increase()
 
