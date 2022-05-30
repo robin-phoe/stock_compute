@@ -1,6 +1,14 @@
 #设定初始资金，设定建仓规则，平仓规则。计算策略信号在指定时间段内收益
+#做出通用回测工具，支持策略、因子回测
+#设定卖出标准，止盈，止损，超时
+#支持多种模式，1、额定初始资金调仓模式，2、无限资金算收益比模式
+#远期：支持策略、因子信号计算缓存，现计算校验已有策略已计算数据
 import pub_uti_a
 import pandas as pd
+
+class setting:
+    mode = 'ratio'#limit_cash:限定资金；ratio:比值模式
+    timeout = 3
 
 init_capital = 1000000
 start_time = ""
