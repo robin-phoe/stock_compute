@@ -57,9 +57,9 @@ class signal_hub:
         #       " from limit_up_single " \
         #       " where trade_date >= '{}' and trade_date <='{}' and grade > 0 and stock_id='002528'".format(self.start_date,self.end_date)
 
-        sql = "select trade_code,trade_date,stock_id,stock_name,0 as grade " \
-              " from stock_trade_data " \
-              " where trade_date >= '{}' and trade_date <='{}' ".format(self.start_date,self.end_date)
+        # sql = "select trade_code,trade_date,stock_id,stock_name,0 as grade " \
+        #       " from stock_trade_data " \
+        #       " where trade_date >= '{}' and trade_date <='{}' ".format(self.start_date,self.end_date)
         self.df = pub_uti_a.creat_df(sql, ascending=True)
         print('signals select completed.', datetime.datetime.now())
     def create_signal_buffer(self):
@@ -93,6 +93,7 @@ class market:
         self.increase= increase
 class market_hub:
     def __init__(self,start_date,end_date):
+        print('market start.', datetime.datetime.now())
         self.start_date = start_date
         self.end_date = end_date
         self.market_df = None
@@ -105,6 +106,7 @@ class market_hub:
               " from stock_trade_data " \
               "where trade_date >= '{}' and trade_date <= '{}' ".format(self.start_date,self.end_date)
         self.market_df = pub_uti_a.creat_df(sql)
+        print('market select complete.', datetime.datetime.now())
     #create buffer
     def create_market_buffer(self):
         for index,row in self.market_df.iterrows():
@@ -113,6 +115,7 @@ class market_hub:
             self.market_buffer[row['trade_date']][row['stock_id']] = market(trade_date=row['trade_date'],stock_id = row['stock_id'],
                                                                        stock_name = row['stock_name'],open_price= row['open_price'],close_price= row['close_price'],
                                                                        high_price= row['high_price'],low_price= row['low_price'],increase= row['increase'])
+        print('market buffer complete.', datetime.datetime.now())
     def get_market_by_day(self,date,stock_id):
         return self.market_buffer.get(date).get(stock_id)
 
@@ -163,6 +166,9 @@ class main:
             market = self.market_hub.get_market_by_day(date,signal.id)
             if not market:
                 continue
+            last_close_price= market.close_price /(1+(market.increase/100))
+            if not market:
+                continue
             #开盘价等于收盘价格，且涨幅大于9.75，筛选一字板（未纳入300、688）
             if market.high_price == market.low_price and market.increase >= 9.75:
                 logging.info('一字板未能买入：name:{},single_date:{}'.format(signal.name,single_date))
@@ -170,10 +176,11 @@ class main:
             #todo 收盘买入需要判断涨停
             #盘中涨幅触发买入
             if signal.conf.call == call_type.filter:
-                if market.increase >= 2.5:
+                filter_price = last_close_price * 1.025
+                if market.high_price >= filter_price:
                     #todo 持仓唯一判断，是否已有持仓则不再买入
                     #trade，创建持仓
-                    buy_price = market.close_price /(1+(market.increase/100)) * 1.025
+                    buy_price = filter_price
                     self.position_buffer[signal.trade_code] = position(signal.trade_code, signal.id,
                                                                        signal.name, qty = 100,
                                                                        buy_price = buy_price,conf=signal.conf,
@@ -250,7 +257,7 @@ class main:
                 position_count += 1
             else:
                 trade_count += 1
-        print('未平仓数',position_count)
+        print('未平仓数',position_count,'总成交数：',trade_count)
     #持仓转为df输出
     def positions_to_df(self):
         df = pd.DataFrame(columns=['trade code','stock id','stock name','buy price','sell price','start_date',
@@ -277,5 +284,5 @@ class main:
 
 
 if __name__ == '__main__':
-    m = main(start_date='2022-01-01',end_date='2022-06-23')
+    m = main(start_date='2020-01-01',end_date='2022-06-23')
     print('count_return_ratio:',m.count_return_ratio)
