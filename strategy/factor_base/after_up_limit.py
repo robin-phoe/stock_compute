@@ -22,15 +22,15 @@ def compute_limit_fall_grade(y_close_price,market:market) -> str:
 
 ###生成信号 输入单只股票行情记录表（升序）
 def create_signal(single_df,signal_df):
-    #清洗688、300个股
-    single_df['flag'] = 0
-    def clean_fun(row):
-        if row['stock_id'][0:3] in ('688','300'):
-            row['flag'] = 1
-        return row
-    single_df = single_df.apply(clean_fun,axis = 1)
-    single_df = single_df[single_df.flag ==0 ].reset_index(drop=True)
-    del single_df['flag']
+    #清洗688、300个股 #在上个环节清理
+    # single_df['flag'] = 0
+    # def clean_fun(row):
+    #     if row['stock_id'][0:3] in ('688','300'):
+    #         row['flag'] = 1
+    #     return row
+    # single_df = single_df.apply(clean_fun,axis = 1)
+    # single_df = single_df[single_df.flag ==0 ].reset_index(drop=True)
+    # del single_df['flag']
     #标记涨停
     single_df['limit_up'] = 0
     def mark_limit(row):
@@ -65,9 +65,10 @@ def create_signal(single_df,signal_df):
                         continue
                 count_days +=1
                 mark = limit_fall_type + str(count_days)
-                signal_ins = signal(stock_id=row['stock_id'],name=row['stock_name'],grade=grade,
-                                signal_date=row['trade_date'],trade_code=row['trade_code'],conf=None,mark=mark)
-                signal_df = signal_add_2_df(signal_ins, signal_df)
+                # signal_ins = signal(stock_id=row['stock_id'],name=row['stock_name'],grade=grade,
+                #                 signal_date=row['trade_date'],trade_code=row['trade_code'],conf=None,mark=mark)
+                signal_df.loc[len(signal_df)] = [row['stock_id'],row['stock_name'],grade,row['trade_date'],row['trade_code'],'',mark]
+                # signal_df = signal_add_2_df(signal_ins, signal_df)
 
             else:
                 limit_flag = False
@@ -76,11 +77,13 @@ def create_signal(single_df,signal_df):
 
 
 def signal_add_2_df(signal:signal,signal_df):
-    filed_list = {'stock_id','name','grade','signal_date','trade_code','conf','mark'}
+    # filed_list = {'stock_id','name','grade','signal_date','trade_code','conf','mark'}
+    filed_list = {'stock_id', 'stock_name', 'grade', 'trade_date', 'trade_code', 'conf', 'mark'}
     filed_delta = filed_list - set(signal_df.columns.to_list())
     for filed in filed_delta:
         signal_df[filed] = ''
-    signal_df = signal_df[['stock_id','name','grade','signal_date','trade_code','conf','mark']]
+    # signal_df = signal_df[['stock_id','name','grade','signal_date','trade_code','conf','mark']]
+    signal_df = signal_df[['stock_id', 'stock_name', 'grade', 'trade_date', 'trade_code', 'conf', 'mark']]
     signal_df.loc[len(signal_df)] = [signal.stock_id,signal.name,signal.grade,signal.signal_date,signal.trade_code,signal.conf,signal.mark]
     return signal_df
         
@@ -92,16 +95,24 @@ def main():
                 where trade_date >= '{0}' and trade_date <= '{1}'".format(start_t, end_t)
     else:
         sql = "SELECT trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price,increase  " \
-              "FROM stock_trade_data"
+              "FROM stock_trade_data "
+        #test
+        sql = "SELECT trade_code,stock_id,stock_name,trade_date,open_price,close_price,high_price,low_price,increase  " \
+              "FROM stock_trade_data where stock_id = '000001'"
     df = pub_uti_a.creat_df(sql, ascending=True)
     id_set = set(df['stock_id'].to_list())
-    signal_df =pd.DataFrame()
+    signal_df =pd.DataFrame(columns=['stock_id', 'stock_name', 'grade', 'trade_date', 'trade_code', 'conf', 'mark'])
+    count = 1
     for id in id_set:
+        if id[0:3] in ('688','300'):
+            continue
+        print('id',count,id)
+        count += 1
         single_df = df[df.stock_id == id]
         single_df.reset_index(inplace=True,drop=True)
         signal_df = create_signal(single_df, signal_df)
-    signal_df.to_csv('../factor_verify_res/limit_fall_signal.csv', index=False)
-    print(signal_df)
+    signal_df.to_csv('../factor_verify_res/limit_fall_signal_test.csv', index=False)
+    # print(signal_df)
 if __name__ == '__main__':
     main()
 ###超参研究
