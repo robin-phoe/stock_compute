@@ -11,3 +11,19 @@ class market:
         self.high_price= high_price
         self.low_price= low_price
         self.increase= increase
+
+class signal:
+    def __init__(self,stock_id,name,grade,signal_date,trade_code,conf=None,mark=None):
+        self.stock_id = stock_id
+        self.name = name
+        self.grade = grade
+        self.signal_date = signal_date
+        self.trade_code = trade_code
+        self.conf = conf
+        self.mark = mark
+
+class call_type(Enum):
+    open = 1
+    filter =2 #2.5%
+    middle = 3
+    close = 4
