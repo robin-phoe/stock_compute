@@ -117,4 +117,4 @@ def get_history(start, end):
 if __name__ == "__main__":
     date = None  # '2020-12-11'
     main(date)
-    # get_history('2020-12-29', '2021-04-12')
+    # get_history('2022-05-10', '2022-05-12')

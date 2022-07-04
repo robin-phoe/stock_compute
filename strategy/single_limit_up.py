@@ -182,6 +182,7 @@ class stock_buffer:
         if self.date == None:
             sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
             self.date = pub_uti_a.select_from_db(sql=sql)[0][0]
+            print('compute date:{}'.format(self.date))
         self.sql_start_date = (datetime.datetime.strptime(self.date,'%Y-%m-%d') -
                                datetime.timedelta(days= self.sql_range_day)).strftime('%Y-%m-%d')
     def clean_tab(self):
@@ -248,5 +249,5 @@ if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
-    # history(start_date= '2021-06-20', end_date= '2021-08-17')
+    # history(start_date= '2022-02-16', end_date= '2022-04-14')
     print('completed.')

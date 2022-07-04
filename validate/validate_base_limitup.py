@@ -26,7 +26,7 @@ class validate_buffer:
         self.vali_range_day = 10
         self.trade_date_start = self.vali_start
         self.trade_date_end = datetime.datetime.strptime(self.vali_end , '%Y-%m-%d') + datetime.timedelta(days = self.vali_range_day+1)
-        self.report_file_name = './validate_report/validate_limit_up.xlsx'
+        self.report_file_name = './validate_result/validate_limit_up.xlsx'
         self.vali_table = 'limit_up_single'
         self.grade = 10001
     def com(self):
@@ -286,7 +286,7 @@ class save_result:
 if __name__ == '__main__':
     date = '2021-04-14'
     # main(date)
-    vali = validate_buffer(vali_start = '2021-06-20',vali_end='2021-08-17')
+    vali = validate_buffer(vali_start = '2021-01-01',vali_end='2022-05-30')
     vali.com()
     # sr = save_result()
     # sr.save()

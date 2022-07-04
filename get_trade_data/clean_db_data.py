@@ -31,5 +31,5 @@ class compute_base_data:
 
 
 if __name__ == '__main__':
-    compute_base_data('2022-04-07','2022-04-15').comput_increase()
+    compute_base_data('2022-06-30','2022-07-01').comput_increase()
 

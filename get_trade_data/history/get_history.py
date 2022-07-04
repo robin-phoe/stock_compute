@@ -153,8 +153,8 @@ def run(start_date,end_date):
     print('All subprocesses done.')
 
 if __name__ == '__main__':
-    start_date = '2022-02-16'
-    end_date = '2022-04-07'
+    start_date = '2022-04-06'
+    end_date = '2022-04-15'
     run(start_date,end_date)
     # make_one_table(0,start_date,end_date)
 

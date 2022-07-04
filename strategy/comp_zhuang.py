@@ -235,7 +235,7 @@ if __name__ == '__main__':
     end_t = None#'2021-01-14'
     start_time = datetime.datetime.now()
 
-    # run(start_t, end_t)
-    # com_lastest_point()
+    run(start_t, end_t)
+    com_lastest_point()
     com_volume_signal()
     print('耗时:', datetime.datetime.now() - start_time)
