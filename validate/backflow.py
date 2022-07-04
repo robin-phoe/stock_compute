@@ -18,6 +18,9 @@ class call_type(Enum):
     filter =2 #2.5%
     middle = 3
     close = 4
+class put_type(Enum):
+    close_price = 1
+    assin_pl_price = 2
 class signal_source(Enum):
     csv = 1
     db = 2
@@ -28,6 +31,7 @@ class base_config:
     stop_loss = -0.05 * 100
     trade_delta = 1#T
     call = call_type.filter
+    put = put_type.assin_pl_price
 init_capital = 1000000
 start_time = ""
 end_time = ""
@@ -51,7 +55,7 @@ class signal_hub:
         self.end_date = end_date
         self.df = None
         self.signal_csv_path = '../strategy/factor_verify_res/limit_fall_signal.csv'
-        self.signal_source = signal_source.csv
+        self.signal_source = signal_source.db#db#signal_source.csv
         self.select_signal()
         self.signal_buffer = {}
         self.create_signal_buffer()
@@ -80,11 +84,17 @@ class signal_hub:
         #       " where trade_date >= '{}' and trade_date <='{}' ".format(self.start_date,self.end_date)
 
         #验证新版单涨停信号
-        sql = "select trade_code,trade_date,stock_id,stock_name,grade " \
-              " from limit_up_single_validate " \
-              " where trade_date >= '{}' and trade_date <='{}' and grade > 1 and type = 'wave' ".format(self.start_date,self.end_date)
+        # sql = "select trade_code,trade_date,stock_id,stock_name,grade " \
+        #       " from limit_up_single_validate " \
+        #       " where trade_date >= '{}' and trade_date <='{}' and grade > 1 and type = 'wave' ".format(self.start_date,self.end_date)
+
+        #验证热门回撤
+        sql = "select trade_code,trade_date,stock_id,stock_name,grade" \
+              " from remen_retracement " \
+              " where trade_date >= '{}' and trade_date <='{}' and grade > 0".format(self.start_date, self.end_date)
 
         self.df = pub_uti_a.creat_df(sql, ascending=True)
+        self.df['mark'] = ''#占位
         print('signals select completed.', datetime.datetime.now())
     def create_signal_buffer(self):
         for index,row in self.df.iterrows():
@@ -92,6 +102,7 @@ class signal_hub:
             self.signal_buffer[row['trade_date']].append(signal(id = row['stock_id'],name = row['stock_name'],grade=row['grade'],
                                                                 signal_date=row['trade_date'],trade_code = row['trade_code'],mark = row['mark']))
         print('signal_buffer completed.',datetime.datetime.now())
+        # print('止盈参数：',self.signal_buffer['2022-02-22'][0].conf.stop_profit , '止损参数：', self.signal_buffer['2022-02-22'][0].conf.stop_loss)
     def get_signals_by_date(self,date):
         return self.signal_buffer.get(date,[])
     '''
@@ -160,8 +171,8 @@ class position:
         self.closed_flag = False
         self.mark = mark
 
-class main:
-    def __init__(self,start_date,end_date,init_capital=0):
+class trading:
+    def __init__(self,start_date,end_date,sig_hub,market_hub,init_capital=0):
         self.start_date = start_date
         self.end_date = end_date
         self.position_buffer = {}
@@ -173,10 +184,10 @@ class main:
         self.start_grade = 0
         self.trade_count = 0
         self.trade_date_list = []
-        self.sig_hub = signal_hub(self.start_date,self.end_date)
-        self.market_hub = market_hub(self.start_date,self.end_date)
+        self.sig_hub = sig_hub#signal_hub(self.start_date,self.end_date)
+        self.market_hub = market_hub#market_hub(self.start_date,self.end_date)
         self.count_return_ratio =0
-        self.run()
+        self.trade()
 
 
 
@@ -236,27 +247,41 @@ class main:
             market = self.market_hub.get_market_by_day(date, stock_id)
             if not market:
                 continue
-            return_ratio = (market.close_price/position.buy_price - 1) * 100
+            if position.conf.put == put_type.close_price:
+                return_ratio = (market.close_price/position.buy_price - 1) * 100
+            elif position.conf.put == put_type.assin_pl_price:
+                return_ratio = (market.high_price / position.buy_price - 1) * 100
+            else:
+                print('ERROR: {} not in assin!'.format(position.conf.put_type) )
+                continue
             close_type = ''
             # 止盈 按收盘价卖出（涨停不卖）
             if return_ratio >= position.conf.stop_profit:
                 #涨停判断
                 if market.increase >= 9.75:
                     continue
+                if position.conf.put == put_type.assin_pl_price:
+                    return_ratio = position.conf.stop_profit
                 close_type = '止盈'
             # 止损强平
             elif return_ratio <= position.conf.stop_loss:
                 #跌停判断
                 if market.increase <= -9.75:
                     continue
+                if position.conf.put == put_type.assin_pl_price:
+                    return_ratio = position.conf.stop_loss
                 close_type = '止损'
             # 超时强平 (程序日期先+1，所以需要大于)
             elif position.hold_days > position.conf.timeout:
+                return_ratio = (market.close_price / position.buy_price - 1) * 100
                 close_type = '超时'
             else:
                 continue
             #并入收益率
-            print('return_ratio:',position.stock_name,position.trade_code,position.buy_price,market.close_price,return_ratio,self.count_return_ratio)
+            print('return_ratio:',position.stock_name,position.trade_code,position.buy_price,market.close_price,return_ratio,self.count_return_ratio,close_type)
+            #筛除异常值
+            if return_ratio >= 150:
+                return_ratio = 0
             self.count_return_ratio += return_ratio
             #修改平仓标志
             position.closed_flag = True
@@ -289,13 +314,13 @@ class main:
         df = pd.DataFrame(columns=['trade code','stock id','stock name','buy price','sell price','start_date',
                                    'end_date','hold days','close type','return ratio','mark'])
         for id, position in self.position_buffer.items():
-            df.loc[len(df)] = (position.trade_code,position.stock_id,position.stock_name,position.buy_price,
-                               position.sell_price,position.start_date,position.end_date,position.hold_days,
-                               position.close_type,position.return_ratio,position.mark)
+            df.loc[len(df)] = (position.trade_code, position.stock_id, position.stock_name, position.buy_price,
+                               position.sell_price, position.start_date, position.end_date, position.hold_days,
+                               position.close_type, position.return_ratio, position.mark)
         time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        df.to_csv('./validate_result/backflow_result_{}.csv'.format(time),index=False)
+        df.to_csv('./validate_result/backflow_result_{}.csv'.format(time), index=False)
     #遍历日期，触发建仓平仓
-    def run(self):
+    def trade(self):
         self.create_tradedate_list()
         for index in range(len(self.trade_date_list)):
             print('日期：',self.trade_date_list[index])
@@ -305,8 +330,13 @@ class main:
             self.sell_operate(index)
         #检验代码逻辑，剩余未平
         self.code_verify()
-        self.positions_to_df()
+        # self.positions_to_df()
 
+def run(start_date='2018-01-01',end_date='2022-06-23'):
+    market_h = market_hub(start_date,end_date)
+    sug_h = signal_hub(start_date,end_date)
+    t = trading(start_date,end_date,sug_h,market_h,init_capital=0)
+    print('count_return_ratio:', t.count_return_ratio,'trade_count:',t.trade_count,'per_ratio:',t.count_return_ratio/t.trade_count)
 def data_analysis():
     df = pd.read_csv('./validate_result/backflow_result_20220628162406.csv')
     #拆分mark
@@ -328,22 +358,24 @@ def data_analysis():
             print(type,i,len(s_df),s_df['return ratio'].sum(),s_df['return ratio'].sum()/len(s_df))
 
 def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
-    for i in range(5,11):
-        res_str = ''
+    res_str = ''
+    market_h = market_hub(start_date,end_date)
+    for i in range(1,20):
         print('超参 i：',i)
         base_config.stop_profit = i
-        base_config.stop_loss = i
-        m = main(start_date, end_date)
+        # base_config.stop_loss = -i
+        # base_config.timeout = 10
+        sug_h = signal_hub(start_date,end_date)
+        m = trading(start_date,end_date,sug_h,market_h,init_capital=0)
         res_str += '超参 i：{}, count_return_ratio:{}, trade_count:{} ratio:{}\n'.format(i,m.count_return_ratio,
-                                                                                    m.trade_count,m.count_return_ratio/m.trade_count)
-    print(res_str)
+                                                                                      m.trade_count,m.count_return_ratio/m.trade_count)
+    print('result:',res_str)
 if __name__ == '__main__':
     #单个
-    # m = main(start_date='2018-01-01',end_date='2022-06-23')
-    # print('count_return_ratio:',m.count_return_ratio)
+    # run('2022-01-01','2022-06-01')
 
     #数据分析
     # data_analysis()
 
     #超参 止盈止损
-    hyper_param_pl()
+    hyper_param_pl('2020-01-01','2022-04-15')
