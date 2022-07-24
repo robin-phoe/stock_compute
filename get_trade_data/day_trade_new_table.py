@@ -60,6 +60,8 @@ def getOnePageStock(page,date_str):
 def main(date):
     if date == None:
         date = datetime.datetime.now().strftime('%Y%m%d')
+    else:
+        date = re.sub('-','',date)
     flag = 1
     page = 1
     while flag:
