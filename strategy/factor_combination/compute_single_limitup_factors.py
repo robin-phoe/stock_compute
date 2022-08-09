@@ -160,7 +160,7 @@ class stock_buffer:
             self.init_stock(id)
             count += 1
             print('count:',count,id)
-        self.res_df.to_csv('../factor_verify_res/compute_single_limitup_factors.csv')
+        # self.res_df.to_csv('../factor_verify_res/compute_single_limitup_factors.csv')
     def creat_time(self):
         sql = "select distinct trade_date as trade_date from stock_trade_data " \
               " where trade_date >= '{0}' and trade_date <= '{1}' ".format(self.start_date,self.end_date)
@@ -171,15 +171,18 @@ class stock_buffer:
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
-                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' ".format(self.start_date,self.end_date)
+                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' " \
+                    " AND stock_id = '002712'".format(self.start_date,self.end_date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
         self.id_set = set(self.trade_df['stock_id'].tolist())
     def init_stock(self,id):
+        single_stock_df = self.trade_df[self.trade_df.stock_id == id]
+        single_stock_df.reset_index(inplace=True,drop= True)
         for date in self.date_list:
-            single_df = self.trade_df[(self.trade_df.stock_id == id) & (self.trade_df.trade_date <= date)]
-            single_df.reset_index(inplace=True)
+            single_df = single_stock_df[single_stock_df.trade_date <= date]
+            single_df.reset_index(inplace=True,drop= True)
             if len(single_df) < 30 :
                 continue
             single_df['flag'] = single_df['increase'].apply(lambda x: 1 if x>=9.75 else 0)
@@ -196,7 +199,7 @@ class stock_buffer:
 
 
 if __name__ == '__main__':
-    st_buff = stock_buffer(start_date= '2018-01-01', end_date= '2022-08-09')
+    st_buff = stock_buffer(start_date= '2019-01-01', end_date= '2019-08-09')
     st_buff.init_buffer()
     # history(start_date= '2022-02-16', end_date= '2022-04-14')
     print('completed.')
