@@ -5,6 +5,7 @@
 #远期：支持策略、因子信号计算缓存，现计算校验已有策略已计算数据
 import datetime
 import logging
+import re
 
 import pub_uti_a
 import pandas as pd
@@ -26,9 +27,9 @@ class signal_source(Enum):
     db = 2
 class base_config:
     mode = 'ratio'#limit_cash:限定资金；ratio:比值模式
-    timeout = 3
-    stop_profit = 0.05 * 100#
-    stop_loss = -0.05 * 100
+    timeout = 10
+    stop_profit = 0.15 * 100#
+    stop_loss = -0.07 * 100
     trade_delta = 1#T
     call = call_type.filter
     put = put_type.assin_pl_price
@@ -54,8 +55,9 @@ class signal_hub:
         self.start_date = start_date
         self.end_date = end_date
         self.df = None
-        self.signal_csv_path = '../strategy/factor_verify_res/limit_fall_signal.csv'
-        self.signal_source = signal_source.db#db#signal_source.csv
+        #self.signal_csv_path = '../strategy/factor_verify_res/limit_fall_signal.csv'
+        self.signal_csv_path = '../strategy/factor_verify_res/compute_single_limitup_factors_2022-08-09A.csv'
+        self.signal_source = signal_source.csv#signal_source.db#db#signal_source.csv
         self.select_signal()
         self.signal_buffer = {}
         self.create_signal_buffer()
@@ -67,9 +69,17 @@ class signal_hub:
         else:
             print('ERROR')
     def select_signal_from_csv(self):
-        self.df = pd.read_csv(self.signal_csv_path)
+        self.df = pd.read_csv(self.signal_csv_path, encoding=u'gbk')
         #恢复账号前导0
         self.df['stock_id'] = self.df['stock_id'].apply(lambda x:str(x).rjust(6,'0'))
+        #格式填充
+        if 'mark' not in self.df.columns:
+            self.df['mark'] = ''#占位
+        if 'grade' not in self.df.columns:
+            self.df['grade'] = 10000#占位
+        if 'trade_code' not in self.df.columns:
+            self.df['trade_date1'] = self.df['trade_date'].apply(lambda x:re.sub('-','',x))
+            self.df['trade_code'] = self.df['trade_date1'] + self.df['stock_id']#拼接
     def select_signal_from_db(self):
         sql = "select trade_code,trade_date,stock_id,stock_name,grade" \
               " from limit_up_single " \
@@ -93,8 +103,19 @@ class signal_hub:
               " from remen_retracement " \
               " where trade_date >= '{}' and trade_date <='{}' and grade > 0".format(self.start_date, self.end_date)
 
+        #验证成交量异动
+        sql = "select trade_code,trade_date,stock_id,stock_name,0 as grade,count_matching as mark " \
+              " from stock_trade_data " \
+              " where trade_date >= '{}' and trade_date <='{}' and value_abnormal ='single'".format(self.start_date,self.end_date)
+
         self.df = pub_uti_a.creat_df(sql, ascending=True)
-        self.df['mark'] = ''#占位
+        if 'mark' not in self.df.columns:
+            self.df['mark'] = ''#占位
+        if 'grade' not in self.df.columns:
+            self.df['grade'] = 10000#占位
+        if 'trade_code' not in self.df.columns:
+            self.df['trade_date1'] = self.df['trade_date1'].apply(lambda x:re.sub('-','',x))
+            self.df['trade_code'] = self.df['trade_date1'] + self.df['stock_id']#拼接
         print('signals select completed.', datetime.datetime.now())
     def create_signal_buffer(self):
         for index,row in self.df.iterrows():
@@ -207,6 +228,13 @@ class trading:
             last_close_price= market.close_price /(1+(market.increase/100))
             if not market:
                 continue
+            #筛除前一日涨停
+            pre_date = self.trade_date_list[index -1]
+            pre_market = self.market_hub.get_market_by_day(pre_date, signal.id)
+            if not pre_market:
+                continue
+            if pre_market.increase >= 9.75:
+                continue
             #开盘价等于收盘价格，且涨幅大于9.75，筛选一字板（未纳入300、688）
             if market.high_price == market.low_price and market.increase >= 9.75:
                 logging.info('一字板未能买入：name:{},single_date:{}'.format(signal.name,single_date))
@@ -318,7 +346,7 @@ class trading:
                                position.sell_price, position.start_date, position.end_date, position.hold_days,
                                position.close_type, position.return_ratio, position.mark)
         time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        df.to_csv('./validate_result/backflow_result_{}.csv'.format(time), index=False)
+        df.to_csv('./validate_result/backflow_single_result_{}.csv'.format(time), index=False)
     #遍历日期，触发建仓平仓
     def trade(self):
         self.create_tradedate_list()
@@ -330,7 +358,8 @@ class trading:
             self.sell_operate(index)
         #检验代码逻辑，剩余未平
         self.code_verify()
-        # self.positions_to_df()
+        #保存csv
+        self.positions_to_df()
 
 def run(start_date='2018-01-01',end_date='2022-06-23'):
     market_h = market_hub(start_date,end_date)
@@ -360,7 +389,7 @@ def data_analysis():
 def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
     res_str = ''
     market_h = market_hub(start_date,end_date)
-    for i in range(1,20):
+    for i in range(5,30):
         print('超参 i：',i)
         base_config.stop_profit = i
         # base_config.stop_loss = -i
@@ -372,10 +401,10 @@ def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
     print('result:',res_str)
 if __name__ == '__main__':
     #单个
-    # run('2022-01-01','2022-06-01')
+    run('2022-05-01','2022-08-09')
 
     #数据分析
     # data_analysis()
 
     #超参 止盈止损
-    hyper_param_pl('2020-01-01','2022-04-15')
+    # hyper_param_pl('2020-01-01','2022-04-15')
