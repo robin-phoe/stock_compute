@@ -56,7 +56,7 @@ class signal_hub:
         self.end_date = end_date
         self.df = None
         #self.signal_csv_path = '../strategy/factor_verify_res/limit_fall_signal.csv'
-        self.signal_csv_path = '../strategy/factor_verify_res/compute_single_limitup_factors_2022-08-09A.csv'
+        self.signal_csv_path = '../strategy/factor_verify_res/compute_single_limitup_factors_2022-08-09.csv'
         self.signal_source = signal_source.csv#signal_source.db#db#signal_source.csv
         self.select_signal()
         self.signal_buffer = {}
@@ -72,13 +72,15 @@ class signal_hub:
         self.df = pd.read_csv(self.signal_csv_path, encoding=u'gbk')
         #恢复账号前导0
         self.df['stock_id'] = self.df['stock_id'].apply(lambda x:str(x).rjust(6,'0'))
+        #日期处理
+        self.df['trade_date'] = self.df['trade_date'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').strftime('%Y-%m-%d'))
+        self.df['trade_date1'] = self.df['trade_date'].apply(lambda x: re.sub('-', '', x))
         #格式填充
         if 'mark' not in self.df.columns:
             self.df['mark'] = ''#占位
         if 'grade' not in self.df.columns:
             self.df['grade'] = 10000#占位
         if 'trade_code' not in self.df.columns:
-            self.df['trade_date1'] = self.df['trade_date'].apply(lambda x:re.sub('-','',x))
             self.df['trade_code'] = self.df['trade_date1'] + self.df['stock_id']#拼接
     def select_signal_from_db(self):
         sql = "select trade_code,trade_date,stock_id,stock_name,grade" \
@@ -365,7 +367,10 @@ def run(start_date='2018-01-01',end_date='2022-06-23'):
     market_h = market_hub(start_date,end_date)
     sug_h = signal_hub(start_date,end_date)
     t = trading(start_date,end_date,sug_h,market_h,init_capital=0)
-    print('count_return_ratio:', t.count_return_ratio,'trade_count:',t.trade_count,'per_ratio:',t.count_return_ratio/t.trade_count)
+    if t.trade_count != 0:
+        print('count_return_ratio:', t.count_return_ratio,'trade_count:',t.trade_count,'per_ratio:',t.count_return_ratio/t.trade_count)
+    else:
+        print('count_return_ratio:',count = 0)
 def data_analysis():
     df = pd.read_csv('./validate_result/backflow_result_20220628162406.csv')
     #拆分mark
@@ -401,7 +406,7 @@ def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
     print('result:',res_str)
 if __name__ == '__main__':
     #单个
-    run('2022-05-01','2022-08-09')
+    run('2018-01-01','2022-08-09')
 
     #数据分析
     # data_analysis()
