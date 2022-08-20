@@ -38,32 +38,37 @@ def get_bk_relation():
     for tup in res:
         bk_map[tup[0]] = tup[1]
     return bk_map
+def clear_info():
+    sql = "delete  from stock_informations"
+    pub_uti_a.commit_to_db(sql)
+    print('清除成功。')
 def get_base_info():
     #清除原数据
-    # sql = "delete from stock_informations"
-    # cursor = db.cursor()
-    # cursor.execute(sql)
-    # cursor.close()
+    clear_info()
     bk_map  = get_bk_relation()
+    s = pub_uti_a.save()
     for num in range(0,1000):
         num_str = '{:0>3d}'.format(num)
         for capital_num in ['600','601','603','688','002','000','300']:
             stock_id = capital_num + num_str
-            get_data(stock_id, bk_map)
+            sql = get_data(stock_id, bk_map)
+            if sql:
+                s.add_sql(sql)
+    s.commit()
 def get_data(stock_id,bk_map):
     if stock_id[0]=='6':
         url = "http://f10.eastmoney.com/CompanySurvey/CompanySurveyAjax?code=SH{}".format(stock_id)
     elif stock_id[0]=='0' or stock_id[0]=='3':
         url = "http://f10.eastmoney.com/CompanySurvey/CompanySurveyAjax?code=SZ{}".format(stock_id)
     else:
-        return 0
+        return None
     header={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'}
     response = requests.get(url,headers=header)
     text=response.text
     print('text:',text)
     if text.find('股票代码不合法') != -1:
         print('flag')
-        return 0
+        return None
     #print('text:',text)
     cym=re.findall('"cym":"(.*?)"',text)[0]
     dchy=re.findall('"sshy":"(.*?)"',text)[0]
@@ -78,7 +83,11 @@ def get_data(stock_id,bk_map):
         ssrq = '1971-01-01'
     #name
     agjc = re.findall('"agjc":"(.*?)"', text)[0]
+    if agjc == '--':
+        return None
     fxl=re.findall('"fxl":"(.*?)"',text)[0]
+    if  fxl == '--':
+        fxl ='0'
     if fxl[-1]=='万':
         fxl = float(fxl[0:-1])*10000
     elif fxl[-1]=='亿':
@@ -92,71 +101,77 @@ def get_data(stock_id,bk_map):
     bk_code = ''
     if dchy != '--':
         bk_code = bk_map[dchy]
-
+    update_time = datetime.datetime.now().strftime('%Y-%m-%d')
     sql = "insert into stock_informations(stock_id,stock_name,发行量,bk_name,证监会行业," \
-          "上市日期,曾用名,每股发行价,区域,雇员人数,经营范围,公司简介,h_table,bk_code) " \
-          "values ('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}') " \
+          "上市日期,曾用名,每股发行价,区域,雇员人数,经营范围,公司简介,h_table,bk_code,updatetime) " \
+          "values ('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}','{14}') " \
           "ON DUPLICATE KEY UPDATE stock_id='{0}',stock_name='{1}',发行量='{2}',bk_name='{3}'," \
           "证监会行业='{4}',上市日期='{5}',曾用名='{6}',每股发行价='{7}',区域='{8}',雇员人数='{9}',经营范围='{10}'" \
-          ",公司简介='{11}',h_table='{12}',bk_code='{13}'" \
-        .format(stock_id,agjc,fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,h_table,bk_code)
+          ",公司简介='{11}',h_table='{12}',bk_code='{13}',updatetime = '{14}'" \
+        .format(stock_id,agjc,fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,h_table,bk_code,update_time)
     # sql="update stock_informations set 发行量={0},bk_name='{1}', 证监会行业='{2}', 上市日期='{3}', 曾用名='{4}', 每股发行价='{5}', 区域='{6}', \
     #     雇员人数='{7}', 经营范围='{8}', 公司简介='{9}' where stock_id = '{10}'\
     #     ".format(fxl,dchy,zjhy,ssrq,cym,mgfxj,qy,gyrs,jyfw,gsjj,stock_id)
     print('sql',sql)
-    pub_uti_a.commit_to_db(sql)
+    return sql
 
-# def deal_info(db):
-#     sql = "select * from stock_informations"
-#     df = get_df_from_db(sql, db)
-#     df = df.reset_index()
-#     df['h_table'] = df['stock_id'].apply(lambda x:x%10)
-#     cursor = db.cursor()
-#     for i in range(len(df)):
-#         sql = "update stock_informations set h_table = '{}'".format(df.loc[i,'h_table'])
-#         cursor.execute(sql)
-#     cursor.close()
-def update_other_tab(db):
-    table_list = ['stock_trade_data',] #stock_trade_data, monitor
+
+
+def update_other_tab():
+    table_list = ['stock_trade_data', ]
     sql = "select stock_name,bk_name,stock_id from stock_informations"
-    cursor = db.cursor()
-    cursor.execute(sql)
-    result = cursor.fetchall()
-    print('查询完成。')
+    result = pub_uti_a.select_from_db(sql)
+    print('查询完成。',result)
     start_time = datetime.datetime.now()
+    s= pub_uti_a.save()
     for table in table_list:
-        try:
-            sql = "update {0} set stock_name=(%s),bk_name=(%s) where stock_id = (%s)".format(table)
-            print('sql:',sql)
-            cursor.executemany(sql,result)
-            db.commit()
-            print('储存完成。table:{}'.format(table))
-        except Exception as err:
-            db.rollback()
-            print('存储失败!table:{},{}'.format(table, err))
-            logging.error('存储失败!table:{},{}'.format(table, err))
+        for tup in result:
+            sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(table,tup[0],tup[1],tup[2])
+            print('sql:', sql)
+            s.add_sql(sql)
+    s.commit()
     print('耗时：{}'.format(datetime.datetime.now() - start_time))
-    # df = get_df_from_db(sql, db)
-    # cursor = db.cursor()
-    # for i in range(len(df)):
-    #     stock_name = df.loc[i,'stock_name']
-    #     bk_name = df.loc[i,'stock_name']
-    #     stock_id = df.loc[i, 'stock_id']
-    #     print('stock_id:{}'.format(stock_id))
-    #     for tab in table_list:
-    #         sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name,
-    #                                                                                             bk_name,
-    #                                                                                             stock_id)
-    #         cursor.execute(sql)
-    # try:
-    #
-    #     db.commit()
-    #     print('存储完成')
-    # except Exception as err:
-    #     db.rollback()
-    #     print('存储失败:id:{},{}'.format(stock_id, err))
-    #     logging.error('存储失败:id:{},{}'.format(stock_id, err))
-    cursor.close()
+# def update_other_tab(db):
+#     table_list = ['stock_trade_data',] #stock_trade_data, monitor
+#     sql = "select stock_name,bk_name,stock_id from stock_informations"
+#     cursor = db.cursor()
+#     cursor.execute(sql)
+#     result = cursor.fetchall()
+#     print('查询完成。')
+#     start_time = datetime.datetime.now()
+#     for table in table_list:
+#         try:
+#             sql = "update {0} set stock_name=(%s),bk_name=(%s) where stock_id = (%s)".format(table)
+#             print('sql:',sql)
+#             cursor.executemany(sql,result)
+#             db.commit()
+#             print('储存完成。table:{}'.format(table))
+#         except Exception as err:
+#             db.rollback()
+#             print('存储失败!table:{},{}'.format(table, err))
+#             logging.error('存储失败!table:{},{}'.format(table, err))
+#     print('耗时：{}'.format(datetime.datetime.now() - start_time))
+#     # df = get_df_from_db(sql, db)
+#     # cursor = db.cursor()
+#     # for i in range(len(df)):
+#     #     stock_name = df.loc[i,'stock_name']
+#     #     bk_name = df.loc[i,'stock_name']
+#     #     stock_id = df.loc[i, 'stock_id']
+#     #     print('stock_id:{}'.format(stock_id))
+#     #     for tab in table_list:
+#     #         sql = "update {0} set stock_name='{1}',bk_name='{2}' where stock_id = '{3}'".format(tab, stock_name,
+#     #                                                                                             bk_name,
+#     #                                                                                             stock_id)
+#     #         cursor.execute(sql)
+#     # try:
+#     #
+#     #     db.commit()
+#     #     print('存储完成')
+#     # except Exception as err:
+#     #     db.rollback()
+#     #     print('存储失败:id:{},{}'.format(stock_id, err))
+#     #     logging.error('存储失败:id:{},{}'.format(stock_id, err))
+#     cursor.close()
 
 def main(update_flag = 0):
     if update_flag ==1:
@@ -169,7 +184,7 @@ def main(update_flag = 0):
 
 
 if __name__ == '__main__':
-    main(update_flag = 0)
+    main(update_flag = 2)
 
     #test
     # stock_id ='600824'
