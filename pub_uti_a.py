@@ -120,6 +120,18 @@ class save:
             logging.error('存储失败:{}'.format(err))
         self.cursor.close()
         self.db.close()
+    def executemany(self,sql,data):
+        try:
+            self.cursor.executemany(sql, data)
+            self.db.commit()
+            print('存储完成')
+            logging.info('存储完成')
+        except Exception as err:
+            self.db.rollback()
+            print('存储失败:', err)
+            logging.error('存储失败:{}'.format(err))
+        self.cursor.close()
+        self.db.close()
 """
 【功能】df存储到mysql
 """
