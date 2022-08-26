@@ -25,7 +25,8 @@ db = pymysql.connect(host=db_config["host"], user=db_config["user"],
 count=0
 bk_dict = {}
 """获取单个板块历史数据"""
-def get_history():
+def get_history(start_date,end_date):
+
     cursor = db.cursor()
     sql ="select distinct bk_code,bk_name from bankuai_day_data"
     cursor.execute(sql)
@@ -35,10 +36,12 @@ def get_history():
     for i in range(len(bankuai_info)):
         bk_dict[bankuai_info[i][0]] = bankuai_info[i][1]
     print('bk_dict:',bk_dict)
+    start_date_put = re.sub('-','',start_date)
+    end_date_put = re.sub('-', '', end_date)
     for bk in bk_dict:
         url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?cb=jQuery112409565109930423827_1607350575238&secid=90.{0}&ut=" \
               "fa5fd1943c7b386f172d6893dbfba10b&fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58&klt=" \
-              "101&fqt=0&beg={1}&end={2}&_=1607350575239".format(bk,'20200101','20220101') #20200101
+              "101&fqt=0&beg={1}&end={2}&_=1607350575239".format(bk,start_date_put,end_date_put) #20200101
         print('url:',url)
         header={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'}
         response = requests.get(url,headers=header)
@@ -74,6 +77,7 @@ def get_history():
                 logging.error('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
                 print('存储失败:id:{},name:{},trade_date:{},err:{}'.format(bk,bk_dict[bk],day_data[0],err))
     cursor.close()
+    com_his_rank(start_date,end_date)
 def com_his_rank(start_date = '2020-05-15',end_date = '2021-07-16'):
     global bk_dict
     cursor = db.cursor()
@@ -179,7 +183,7 @@ def main(date):
 if __name__ == '__main__':
     date = None
     main(date)
-    # get_history()
+    # get_history('2022-02-19','2022-08-25')
     # com_his_rank(start_date='2021-05-15', end_date='2021-07-16')
     # print('completed!')
 
