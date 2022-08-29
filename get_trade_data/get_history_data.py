@@ -8,7 +8,7 @@ from multiprocessing import Pool
 logging.basicConfig(level=logging.DEBUG, filename='../log/get_history_data.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
 import json
-
+target_table = 'stock_trade_data1217'#'stock_trade_data'
 class stock:
     def __init__(self,stock_id,stock_name,start_date,end_date):
         self.stock_id = stock_id
@@ -18,10 +18,17 @@ class stock:
         self.check_date()
         self.exchange = None
         self.judge_exchange()
+        #后复权fqt=2
         self.get_kline_url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?secid={3}.{0}&" \
-                   "fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&" \
-                   "beg={1}&end={2}&ut=fa5fd1943c7b386f172d6893dbfba10b"\
-            .format(self.stock_id,start_date,end_date,self.exchange)
+                             "fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=2&" \
+                             "beg={1}&end={2}&ut=fa5fd1943c7b386f172d6893dbfba10b" \
+            .format(self.stock_id, start_date, end_date, self.exchange)
+        # print(self.get_kline_url)
+        #前复权fqt=1
+        # self.get_kline_url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?secid={3}.{0}&" \
+        #            "fields1=f1,f2,f3,f4,f5&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&" \
+        #            "beg={1}&end={2}&ut=fa5fd1943c7b386f172d6893dbfba10b"\
+        #     .format(self.stock_id,start_date,end_date,self.exchange)
         self.base_info_url = "http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&" \
                              "fltt=2&invt=2&volt=2&fields=f58,f84,f85&secid={0}.{1}".format(self.exchange,self.stock_id)
         self.header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -76,14 +83,14 @@ class stock:
             P_E = 9999 #填充
             P_B = 9999 #填充
             trade_money = 9999 #填充
-            sql="insert into stock_trade_data(trade_code,stock_name,stock_id,trade_date,close_price,increase," \
+            sql="insert into {14}(trade_code,stock_name,stock_id,trade_date,close_price,increase," \
                         "open_price,turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money) " \
                         "values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')" \
                         "ON DUPLICATE KEY UPDATE trade_code='{0}',stock_name='{1}',stock_id='{2}',trade_date='{3}'," \
                         "close_price='{4}',increase='{5}',open_price='{6}',turnover_rate='{7}'," \
                         "P_E='{8}',P_B='{9}',high_price='{10}',low_price='{11}',trade_amount='{12}',trade_money='{13}'" \
                         .format(trade_code,self.stock_name,self.stock_id,trade_date,close_price,increase,open_price,
-                                turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money)
+                                turnover_rate,P_E,P_B,high_price,low_price,trade_amount,trade_money,target_table)
             s.add_sql(sql)
         s.commit()
 class stock_buff:
@@ -93,7 +100,7 @@ class stock_buff:
         self.end_date = end_date
         self.get_stock_list()
     def get_stock_list(self):
-        sql = "select distinct stock_id,stock_name from stock_trade_data "
+        sql = "select distinct stock_id,stock_name from stock_informations "
         self.info_tuple = pub_uti_a.select_from_db(sql)
     def deal_page(self,num):
         for tup in self.info_tuple:
@@ -122,4 +129,4 @@ if __name__ == '__main__':
     #test
     # stock('603568','伟明环保','20220320','20220402')
     # stock_buff('20220320','20220322').deal_page(1)
-    stock_buff('20220701', '20220701').deal_all()
+    stock_buff('20120101', '20171231').deal_all()
