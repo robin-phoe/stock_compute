@@ -6,7 +6,7 @@ import os
 import logging
 from sqlalchemy import create_engine
 import json
-import config.config as config
+import config.readconfig as config
 
 """
 【功能】读取配置
