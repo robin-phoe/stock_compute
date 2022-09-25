@@ -42,10 +42,11 @@ class base_config:
     source_table = 'stock_trade_data'#'stock_trade_data1217'
 class put_out_config:
     # signal_csv_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_12_17\\compute_single_limitup_factors_12_17.csv'
-    signal_csv_path = "E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_18-22\\compute_single_limitup_factors_2022-08-09.csv"
+    signal_csv_path = "E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_22\\compute_single_limitup_factors_2022-08-09.csv"
     signal_source = signal_source.db
     save_result = True
-    result_file_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_xinhao_factors_18-22\\18-22_return_xinhao_7止盈{}.csv'#single_limit_factors_18-22\\return_18-22_7止盈_{}.csv'
+    result_file_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_22\\22_return_xinhao_7止盈{}.csv'#single_limit_factors_18-22\\return_18-22_7止盈_{}.csv'
+    profit_file_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_22\\22_profile_7止盈{}.csv'#single_limit_factors_18-22\\profile_18-22_7止盈_{}.png'
 init_capital = 1000000
 start_time = ""
 end_time = ""
@@ -235,12 +236,11 @@ class trading:
         self.trade_count = 0
         self.hold_day_count = 0
         self.trade_date_list = []
+        self.position_and_trade_profit_list = []
         self.sig_hub = sig_hub#signal_hub(self.start_date,self.end_date)
         self.market_hub = market_hub#market_hub(self.start_date,self.end_date)
         self.count_return_ratio =0
         self.trade()
-
-
 
     #建仓操作
     def buy_operate(self,index):
@@ -248,7 +248,7 @@ class trading:
         #per_s_capital =
         if index == 0:
             return
-        single_date = self.trade_date_list[index-1]
+        single_date = self.trade_date_list[index-1]#db表中信号日期为生成日期，交易日期在后一日。后期兼容当日信号源，需要修改
         date = self.trade_date_list[index]
         signals = self.sig_hub.get_signals_by_date(single_date)
         for signal in signals:
@@ -367,6 +367,45 @@ class trading:
             position.return_ratio = return_ratio
             position.end_date = date
 
+    #计算持仓盈亏&交易盈亏
+    def calc_position_and_trade_profit(self,index):
+        #浮动盈亏总计
+        position_profit = 0
+        #浮动盈亏股票数
+        position_profit_count = 0
+        #交易盈亏总计
+        trade_profit = 0
+        #交易盈亏股票数
+        trade_profit_count = 0
+        #查询交易日期
+        trade_date = self.trade_date_list[index]
+        #平均 浮动盈亏
+        avg_position_profit = 0
+        #平均 交易盈亏
+        avg_trade_profit = 0
+        for id, position in self.position_buffer.items():
+            #计算浮动盈亏
+            #判断是否已平仓
+            if position.closed_flag == False:
+                #获取行情
+                market = self.market_hub.get_market_by_day(trade_date,position.stock_id)
+                if not market:
+                    continue
+                position_profit_count += 1
+                #计算浮动收益率
+                position_profit += (market.close_price/position.buy_price - 1) * 100
+            #计算交易盈亏
+            if position.closed_flag == True and position.end_date == trade_date:
+                trade_profit_count += 1
+                trade_profit += position.return_ratio
+        #计算平均浮动盈亏
+        if position_profit_count > 0:
+            avg_position_profit = position_profit / position_profit_count
+        #计算平均交易盈亏
+        if trade_profit_count > 0:
+            avg_trade_profit = trade_profit / trade_profit_count
+        #填入数据
+        self.position_and_trade_profit_list.append([trade_date,position_profit,position_profit_count,avg_position_profit,trade_profit,trade_profit_count,avg_trade_profit])
 
     #创建交易日列表
     def create_tradedate_list(self):
@@ -414,6 +453,9 @@ class trading:
 
         time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         df.to_csv(put_out_config.result_file_path.format(time), index=False)
+        #记录持仓盈亏和交易盈亏
+        profit_df = pd.DataFrame(self.position_and_trade_profit_list,columns=['trade_date','position_profit','position_profit_count','position_profit_mean','trade_profit','trade_profit_count','trade_profit_mean'])
+        profit_df.to_csv(put_out_config.profit_file_path.format(time), index=False)
     #遍历日期，触发建仓平仓
     def trade(self):
         self.create_tradedate_list()
@@ -423,6 +465,8 @@ class trading:
             self.buy_operate(index)
             #处理平仓
             self.sell_operate(index)
+            #计算持仓&交易盈亏
+            self.calc_position_and_trade_profit(index)
         #检验代码逻辑，剩余未平
         self.code_verify()
         #保存csv
@@ -463,6 +507,8 @@ class plot_bar:
             lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').strftime('%Y-%m-%d'))
         self.return_df['end_date'] = self.return_df['end_date'].astype(str).apply(
             lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').strftime('%Y-%m-%d'))
+        # 交易数据切片
+        self.return_df = self.return_df[(self.return_df['start_date'] >= self.start_date)&(self.return_df['end_date'] <= self.end_date)]
         date_len = len(self.trade_date_list)
         for index,row in self.return_df.iterrows():
             self.year = row['start_date'][0:4]
@@ -516,8 +562,8 @@ class plot_bar:
         # plt.clf()
 def run(start_date='2018-01-01',end_date='2022-06-23'):
     market_h = market_hub(start_date,end_date)
-    sug_h = signal_hub(start_date,end_date)
-    t = trading(start_date,end_date,sug_h,market_h,init_capital=0)
+    sig_h = signal_hub(start_date,end_date)
+    t = trading(start_date,end_date,sig_h,market_h,init_capital=0)
     if t.trade_count != 0:
         print('count_return_ratio:', t.count_return_ratio,'trade_count:',t.trade_count,'per_ratio:',t.count_return_ratio/t.trade_count,
               'per_hold_day_ratio:',t.count_return_ratio/t.hold_day_count)
@@ -563,7 +609,7 @@ def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
     print('result:',res_str)
 if __name__ == '__main__':
     #单个
-    # run('2018-01-01','2023-01-01')
+    run('2018-01-01','2023-01-01')
 
     #数据分析
     # data_analysis()
@@ -572,4 +618,4 @@ if __name__ == '__main__':
     # hyper_param_pl('2018-01-01','2022-09-15')
 
     #k线图展示
-    plot_bar('2022-01-01','2022-02-01').run()
+    # plot_bar('2022-01-01','2022-09-01').run()
