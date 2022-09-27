@@ -4,9 +4,10 @@
 #支持多种模式，1、额定初始资金调仓模式，2、无限资金算收益比模式
 #远期：支持策略、因子信号计算缓存，现计算校验已有策略已计算数据
 import datetime
+import json
 import logging
 import re
-
+import os
 import pub_uti_a
 import pandas as pd
 from enum import Enum
@@ -18,38 +19,63 @@ from matplotlib import ticker
 
 logging.basicConfig(level=logging.INFO, filename='../log/backflow.log', filemode='w',
                     format='%(asctime)s-%(levelname)5s: %(message)s')
+############配置参数
+work_dir = "E:\\Code\\stock_compute\\strategy\\factor_verify_res\\热门回撤_持仓位限制10\\"
 
 class call_type(Enum):
-    open = 1
-    filter =2 #2.5%
-    middle = 3
-    close = 4
+    open = 1 #开盘价买入
+    filter =2 #2.5% #条件价买入
+    middle = 3 #中间价格买入
+    close = 4 #收盘价买入
 class put_type(Enum):
-    close_price = 1
-    assin_pl_price = 2
+    close_price = 1 #收盘价卖出
+    assin_pl_price = 2 #指定盈利价卖出
+##信号源类型
 class signal_source(Enum):
     csv = 1
     db = 2
 class base_config:
-    mode = 'ratio'#limit_cash:限定资金；ratio:比值模式
+    #回测开始时间
+    start_date = '2020-01-01'
+    #回测结束时间
+    end_date = '2022-10-01'
+    #回测模式
+    mode = {'limit_count':10}#limit_cash:初始资金限制；limit_count:持仓数限制；ratio:累计比值模式；
+    #超时
     timeout = 10
+    #止盈
     stop_profit =0.07 * 100#0.07*100#0.15 * 100#
+    #止损
     stop_loss = -0.03 * 100#-0.07*100 #-0.03 * 100
-    trade_delta = 1#T
+    #T模式
+    trade_delta = 1#{0:当日买入，1：次日买入}
+    #买入模式
     call = call_type.filter
+    #卖出模式
     put = put_type.assin_pl_price
+    #条件价比例（条件模式有效）
     call_filter_ratio = 2.5
+    #行情源数据表
     source_table = 'stock_trade_data'#'stock_trade_data1217'
-class put_out_config:
-    # signal_csv_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_12_17\\compute_single_limitup_factors_12_17.csv'
-    signal_csv_path = "E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_22\\compute_single_limitup_factors_2022-08-09.csv"
+##文件输入配置
+class put_config:
+    #信号来源配置
     signal_source = signal_source.db
+    #csv信号文件源（csv模式）
+    # signal_csv_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_12_17\\compute_single_limitup_factors_12_17.csv'
+    signal_csv_path = work_dir + "compute_single_limitup_factors_2022-08-09.csv"
+    #数据库信号源（db模式）
+    sql = "select trade_code,trade_date,stock_id,stock_name,grade" \
+              " from remen_retracement " \
+              " where trade_date >= '{start_date}' and trade_date <='{end_date}' and grade > 0"
+##文件输出配置
+class out_config:
+    #是否存储回测数据表格
     save_result = True
-    result_file_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_22\\22_return_xinhao_7止盈{}.csv'#single_limit_factors_18-22\\return_18-22_7止盈_{}.csv'
-    profit_file_path = 'E:\\Code\\stock_compute\\strategy\\factor_verify_res\\single_limit_factors_22\\22_profile_7止盈{}.csv'#single_limit_factors_18-22\\profile_18-22_7止盈_{}.png'
-init_capital = 1000000
-start_time = ""
-end_time = ""
+    result_file_path = work_dir + '信号结果数据{}.csv'  # single_limit_factors_18-22\\return_18-22_7止盈_{}.csv'
+    profit_file_path = work_dir + '收益率数据{}.csv'  # single_limit_factors_18-22\\profile_18-22_7止盈_{}.png'
+    
+############
 
 #信号
 class signal:
@@ -63,50 +89,8 @@ class signal:
         self.mark = mark
 
 #信号buffer
-class signal_hub:
-    def __init__(self,start_date,end_date):
-        print('signal start.', datetime.datetime.now())
-        self.start_date = start_date
-        self.end_date = end_date
-        self.df = None
-        #self.signal_csv_path = '../strategy/factor_verify_res/limit_fall_signal.csv'
-        self.signal_csv_path = put_out_config.signal_csv_path
-        self.signal_source = put_out_config.signal_source#signal_source.db#db#signal_source.csv
-        self.select_signal()
-        self.signal_buffer = {}
-        self.create_signal_buffer()
-    def select_signal(self):
-        if self.signal_source == signal_source.csv:
-            self.select_signal_from_csv()
-        elif self.signal_source == signal_source.db:
-            self.select_signal_from_db()
-        else:
-            print('ERROR')
-    def select_signal_from_csv(self):
-        try:
-            self.df = pd.read_csv(self.signal_csv_path, encoding=u'gbk')
-        except:
-            self.df = pd.read_csv(self.signal_csv_path)
-        #筛除信号中'0',非信号
-        self.df = self.df[self.df['15日换手率'] != 0]
-        #恢复账号前导0
-        self.df['stock_id'] = self.df['stock_id'].apply(lambda x:str(x).rjust(6,'0'))
-        #日期处理
-        self.df['trade_date'] = self.df['trade_date'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').strftime('%Y-%m-%d'))
-        self.df['trade_date1'] = self.df['trade_date'].apply(lambda x: re.sub('-', '', x))
-        #条件
-        self.df = self.df[(self.df.trade_date >= self.start_date)&(self.df.trade_date <= self.end_date)]
-        # self.df = self.df[self.df['stock_id'] == '000825']
-        self.df.reset_index(inplace=True,drop=True)
-        #格式填充
-        if 'mark' not in self.df.columns:
-            self.df['mark'] = ''#占位
-        if 'grade' not in self.df.columns:
-            self.df['grade'] = 10000#占位
-        if 'trade_code' not in self.df.columns:
-            self.df['trade_code'] = self.df['trade_date1'] + self.df['stock_id']#拼接
-    def select_signal_from_db(self):
-        single_sql = "select trade_code,trade_date,stock_id,stock_name,grade" \
+'''
+       single_sql = "select trade_code,trade_date,stock_id,stock_name,grade" \
               " from limit_up_single " \
               " where trade_date >= '{}' and trade_date <='{}' and grade > 0".format(self.start_date,self.end_date)
         #test
@@ -137,8 +121,53 @@ class signal_hub:
         sql = "select trade_code,trade_date,stock_id,stock_name,0 as grade,count_matching as mark " \
               " from stock_trade_data " \
               " where trade_date >= '{}' and trade_date <='{}' ".format(self.start_date,self.end_date)
-
-        self.df = pub_uti_a.creat_df(single_sql, ascending=True)
+'''
+class signal_hub:
+    def __init__(self,start_date,end_date):
+        print('signal start.', datetime.datetime.now())
+        self.start_date = start_date
+        self.end_date = end_date
+        self.df = None
+        #self.signal_csv_path = '../strategy/factor_verify_res/limit_fall_signal.csv'
+        self.signal_csv_path = put_config.signal_csv_path
+        self.signal_source = put_config.signal_source#signal_source.db#db#signal_source.csv
+        self.select_signal()
+        self.signal_buffer = {}
+        self.create_signal_buffer()
+    def select_signal(self):
+        if self.signal_source == signal_source.csv:
+            self.select_signal_from_csv()
+        elif self.signal_source == signal_source.db:
+            self.select_signal_from_db()
+        else:
+            print('ERROR')
+    def select_signal_from_csv(self):
+        try:
+            self.df = pd.read_csv(self.signal_csv_path, encoding=u'gbk')
+        except:
+            self.df = pd.read_csv(self.signal_csv_path)
+        ###数据清洗
+        # 筛除信号中'0',非信号
+        self.df = self.df[self.df['15日换手率'] != 0] 
+        #恢复账号前导0
+        self.df['stock_id'] = self.df['stock_id'].apply(lambda x:str(x).rjust(6,'0'))
+        #日期处理
+        self.df['trade_date'] = self.df['trade_date'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').strftime('%Y-%m-%d'))
+        self.df['trade_date1'] = self.df['trade_date'].apply(lambda x: re.sub('-', '', x)) #创建'%Y%m%d'格式日期
+        #起止日期截取
+        self.df = self.df[(self.df.trade_date >= self.start_date)&(self.df.trade_date <= self.end_date)]
+        # self.df = self.df[self.df['stock_id'] == '000825']
+        self.df.reset_index(inplace=True,drop=True)
+        #格式填充
+        if 'mark' not in self.df.columns:
+            self.df['mark'] = ''#占位
+        if 'grade' not in self.df.columns:
+            self.df['grade'] = 10000#占位
+        if 'trade_code' not in self.df.columns:
+            self.df['trade_code'] = self.df['trade_date1'] + self.df['stock_id']#拼接
+    def select_signal_from_db(self):
+        sql = put_config.sql.format(start_date=self.start_date,end_date=self.end_date)
+        self.df = pub_uti_a.creat_df(sql, ascending=True)
         if 'mark' not in self.df.columns:
             self.df['mark'] = ''#占位
         if 'grade' not in self.df.columns:
@@ -244,55 +273,87 @@ class trading:
 
     #建仓操作
     def buy_operate(self,index):
-        #资金分配
-        #per_s_capital =
-        if index == 0:
+        #判断T模式
+        date_index =  index - base_config.trade_delta#db表中信号日期为生成日期，所以需要减去间隔日数
+        if date_index < 0:
             return
-        single_date = self.trade_date_list[index-1]#db表中信号日期为生成日期，交易日期在后一日。后期兼容当日信号源，需要修改
+        #判断回测模式
+        mode_type = list(base_config.mode.keys())[0]
+        if mode_type == 'ratio': #累计比值模式
+            pass
+        elif mode_type == 'limit_count': #限制持仓数模式
+            limit_count = base_config.mode[mode_type]
+            position_count = 0
+            for pos in self.position_buffer.values():
+                if pos.closed_flag == False:
+                    position_count += 1
+            if position_count >= limit_count: #持仓数超过限制
+                return
+        elif mode_type == 'limit_cash': #限制初始资金模式
+            pass
+
+        single_date = self.trade_date_list[date_index]
         date = self.trade_date_list[index]
         signals = self.sig_hub.get_signals_by_date(single_date)
         for signal in signals:
             market = self.market_hub.get_market_by_day(date,signal.id)
             if not market:
                 continue
-            last_close_price= market.close_price /(1+(market.increase/100))
-            if not market:
-                continue
-            #筛除前一日涨停
+            pre_close_price= market.close_price /(1+(market.increase/100))
+            '''
+            #筛除前一日涨停？
             pre_date = self.trade_date_list[index -1]
             pre_market = self.market_hub.get_market_by_day(pre_date, signal.id)
             if not pre_market:
                 continue
-            if pre_market.increase >= 9.75:
+            if pre_market.increase >= 9.75: #已滤科创
                 continue
-            #开盘价等于收盘价格，且涨幅大于9.75，筛选一字板（未纳入300、688）
+            '''
+            #开盘价等于收盘价格，且涨幅大于9.75，筛除一字板（未纳入300、688）
             if market.high_price == market.low_price and market.increase >= 9.75:
                 logging.info('一字板未能买入：name:{},single_date:{}'.format(signal.name,single_date))
                 continue
             #todo 收盘买入需要判断涨停
-            #触发价
-            filter_price = last_close_price * (base_config.call_filter_ratio/100 +1)
-            #开盘价大于触发价格,退出
-            if market.open_price > filter_price:
-                logging.info('高开大于触发价格：name:{},single_date:{},filter_price:{},market.open_price:{}'.format(signal.name, single_date,filter_price,market.open_price))
-                continue
-            #盘中涨幅触发买入
+            #判断买入模式
+            #条件价模式
             if signal.conf.call == call_type.filter:
-                if market.high_price >= filter_price:
-                    #todo 持仓唯一判断，是否已有持仓则不再买入
-                    #trade，创建持仓
-                    buy_price = filter_price
-                    self.position_buffer[signal.trade_code] = position(signal.trade_code, signal.id,
-                                                                       signal.name, qty = 100,
-                                                                       buy_price = buy_price,conf=signal.conf,
-                                                                       start_date = date,mark=signal.mark)
+                #触发价
+                filter_price = pre_close_price * (base_config.call_filter_ratio/100 +1)
+                #开盘价大于触发价格,退出
+                if market.open_price > filter_price:
+                    logging.info('高开大于触发价格：name:{},single_date:{},filter_price:{},market.open_price:{}'.format(signal.name, single_date,filter_price,market.open_price))
+                    continue
+                #盘中涨幅触发买入
+                if signal.conf.call == call_type.filter:
+                    if market.high_price >= filter_price:
+                        #trade，创建持仓
+                        buy_price = filter_price
+                        self.position_buffer[signal.trade_code] = position(signal.trade_code, signal.id,
+                                                                           signal.name, qty = 100,
+                                                                           buy_price = buy_price,conf=signal.conf,
+                                                                           start_date = date,mark=signal.mark)
             #开盘价买入
             if signal.conf.call == call_type.open:
+                #开盘价大于等于涨停价，退出
+                if market.open_price >= round(pre_close_price * 1.099,2):
+                    logging.info('开盘价大于等于涨停价：name:{},single_date:{},market.open_price:{}'.format(signal.name, single_date,market.open_price))
+                    continue
                 buy_price = market.open_price
                 self.position_buffer[signal.trade_code] = position(signal.trade_code, signal.id,
                                                                    signal.name, qty=100,
                                                                    buy_price=buy_price, conf=signal.conf,
-                                                                   start_date=date)
+                                                                   start_date=date,mark=signal.mark)
+            #收盘价买入
+            if signal.conf.call == call_type.close:
+                #收盘价大于等于涨停价，退出
+                if market.close_price >= round(pre_close_price * 1.099,2):
+                    logging.info('收盘价大于等于涨停价：name:{},single_date:{},market.close_price:{}'.format(signal.name, single_date,market.close_price))
+                    continue
+                buy_price = market.close_price
+                self.position_buffer[signal.trade_code] = position(signal.trade_code, signal.id,
+                                                                   signal.name, qty=100,
+                                                                   buy_price=buy_price, conf=signal.conf,
+                                                                   start_date=date,mark=signal.mark)
             #todo 其他买入方式判断
 
     #平仓操作
@@ -373,8 +434,12 @@ class trading:
         position_profit = 0
         #浮动盈亏股票数
         position_profit_count = 0
+        #浮动盈亏持仓日均值总计
+        position_profit_per_day = 0
         #交易盈亏总计
         trade_profit = 0
+        #交易盈亏持仓日均值总计
+        trade_profit_per_day = 0
         #交易盈亏股票数
         trade_profit_count = 0
         #查询交易日期
@@ -383,6 +448,8 @@ class trading:
         avg_position_profit = 0
         #平均 交易盈亏
         avg_trade_profit = 0
+        #平均 交易盈亏/持仓日均
+        avg_trade_profit_per_day = 0
         for id, position in self.position_buffer.items():
             #计算浮动盈亏
             #判断是否已平仓
@@ -394,18 +461,29 @@ class trading:
                 position_profit_count += 1
                 #计算浮动收益率
                 position_profit += (market.close_price/position.buy_price - 1) * 100
+                #计算浮动收益率/持仓日均
+                position_profit_per_day += (market.close_price/position.buy_price - 1) * 100 / position.hold_days
             #计算交易盈亏
             if position.closed_flag == True and position.end_date == trade_date:
                 trade_profit_count += 1
                 trade_profit += position.return_ratio
+                #计算交易盈亏持仓日均值
+                trade_profit_per_day += position.return_ratio/position.hold_days
         #计算平均浮动盈亏
         if position_profit_count > 0:
             avg_position_profit = position_profit / position_profit_count
         #计算平均交易盈亏
         if trade_profit_count > 0:
             avg_trade_profit = trade_profit / trade_profit_count
+        #计算平均交易盈亏/持仓日均
+        if trade_profit_count > 0:
+            avg_trade_profit_per_day = trade_profit_per_day / trade_profit_count
+        #计算平均持仓盈亏/持仓日均
+        if position_profit_count > 0:
+            avg_position_profit_per_day = position_profit_per_day / position_profit_count
         #填入数据
-        self.position_and_trade_profit_list.append([trade_date,position_profit,position_profit_count,avg_position_profit,trade_profit,trade_profit_count,avg_trade_profit])
+        self.position_and_trade_profit_list.append([trade_date,position_profit,position_profit_count,avg_position_profit,avg_position_profit_per_day,
+                                                    trade_profit,trade_profit_count,avg_trade_profit,avg_trade_profit_per_day])
 
     #创建交易日列表
     def create_tradedate_list(self):
@@ -452,10 +530,12 @@ class trading:
         print('耗时测试1：',datetime.datetime.now()-start_timestamp)
 
         time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        df.to_csv(put_out_config.result_file_path.format(time), index=False)
+        df.to_csv(out_config.result_file_path.format(time), index=False)
         #记录持仓盈亏和交易盈亏
-        profit_df = pd.DataFrame(self.position_and_trade_profit_list,columns=['trade_date','position_profit','position_profit_count','position_profit_mean','trade_profit','trade_profit_count','trade_profit_mean'])
-        profit_df.to_csv(put_out_config.profit_file_path.format(time), index=False)
+        profit_df = pd.DataFrame(self.position_and_trade_profit_list,columns=['trade_date','position_profit','position_profit_count','avg_position_profit','avg_position_profit_per_day',
+                                                                                'trade_profit','trade_profit_count','avg_trade_profit','avg_trade_profit_per_day'])
+        #记录持仓盈亏和交易盈亏
+        profit_df.to_csv(out_config.profit_file_path.format(time), index=False)
     #遍历日期，触发建仓平仓
     def trade(self):
         self.create_tradedate_list()
@@ -470,7 +550,7 @@ class trading:
         #检验代码逻辑，剩余未平
         self.code_verify()
         #保存csv
-        if put_out_config.save_result:
+        if out_config.save_result:
             self.positions_to_df()
 
 class plot_bar:
@@ -560,7 +640,24 @@ class plot_bar:
         plt.savefig(image_path)
         plt.close('all')
         # plt.clf()
-def run(start_date='2018-01-01',end_date='2022-06-23'):
+#初始化环境参数
+def init_env():
+    # 环境初始化,如果文件夹不存在则创建
+    if not os.path.exists(work_dir):
+        os.makedirs(work_dir)
+        #把配置参数保存到txt文本
+        # with open(work_dir + '/config.txt', 'w') as f:
+        #     f.write(json.dumps(base_config.__dict__))
+    else:
+        pass
+        #读取配置参数
+        # with open(work_dir + '/config.txt', 'r') as f:
+        #     config_dict = json.loads(f.read())
+        #     base_config.__dict__.update(config_dict)
+def run():
+    init_env()
+    start_date = base_config.start_date
+    end_date = base_config.end_date
     market_h = market_hub(start_date,end_date)
     sig_h = signal_hub(start_date,end_date)
     t = trading(start_date,end_date,sig_h,market_h,init_capital=0)
@@ -594,7 +691,7 @@ def data_analysis():
 def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
     res_str = ''
     market_h = market_hub(start_date,end_date)
-    put_out_config.save_result = False
+    out_config.save_result = False
     for i in range(1,7):
         print('超参 i：',i)
         # base_config.call_filter_ratio = i
@@ -609,7 +706,7 @@ def hyper_param_pl(start_date='2018-01-01',end_date='2022-06-23'):
     print('result:',res_str)
 if __name__ == '__main__':
     #单个
-    run('2018-01-01','2023-01-01')
+    run()
 
     #数据分析
     # data_analysis()
