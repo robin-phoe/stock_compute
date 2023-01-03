@@ -10,7 +10,6 @@ import pub_uti_a
 
 # d = u2.connect()
 d = u2.connect('192.168.1.88')
-# d =u2.connect_wifi('192.168.1.88')
 # d=u2.connect_usb()
 def init():
     d(resourceId="com.miui.home:id/icon_icon", description="新浪财经").click()
@@ -26,6 +25,7 @@ def init():
         win_clo.click()
     #进入自选
     d(resourceId="cn.com.sina.finance:id/tab_item_tv", text="自选").click()
+    '''#自选组删除新建暂时不执行，app升级，新建后返回有问题
     #下拉自选列表
     d(resourceId="cn.com.sina.finance:id/optional_manage_img").click()
     #点击管理分组
@@ -38,7 +38,7 @@ def init():
             break
         #确定
         d(resourceId="cn.com.sina.finance:id/id_dialog_right_btn").click()
-    groups = ['庄线','小波形','回撤','单涨停','波形']
+    groups = ['单涨停','庄线','小波形','回撤','波形']
     for group in groups:
         #新建分组
         d(text="新建分组").click()
@@ -51,6 +51,7 @@ def init():
     #分组管理完成
     d(resourceId="cn.com.sina.finance:id/optional_manage_left_btn").click()
     # sleep(1)
+    '''
 def fill_stock(stock_dict):
     #分类中stock_id不能重复
     # stock_dict = {'庄线':["002218",'603456'],'小波形':['605299'],'回撤':[],'单涨停':[],'波形':[]} //test
