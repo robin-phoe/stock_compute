@@ -69,8 +69,9 @@ class stock:
             return False
         if self.after_inc > 5:
             return False
-        if not self.validate_redu():
-            return False
+        #补清楚特征意义，暂时取消
+        # if not self.validate_redu():
+        #     return False
         if not self.validate_inc_long():
             return False
         else:
@@ -95,7 +96,7 @@ class stock:
                     self.com_price(i)
                     self.limit_up_flag = True
                     continue
-                #期间一日涨幅大于5，退出
+                #期间一日涨幅大于4，退出
                 if self.single_df.loc[i,'increase'] >= 4:
                     self.stop = True
                     return False
@@ -161,7 +162,7 @@ class stock:
             return False
         return True
 class stock_buffer:
-    def __init__(self,date = None):
+    def __init__(self,date = None,test_flag = False):
         self.stock_buffer = {}
         self.trade_df = ''
         self.date = date
@@ -169,15 +170,22 @@ class stock_buffer:
         self.sql_start_date = ''#'2021-06-10'
         self.id_set = set()
         self.save = ''
+        self.test_flag = test_flag
         #trade_data区间开始的时间
     def init_buffer(self):
         self.creat_time()
-        self.clean_tab()
-        self.select_info()
         self.save = pub_uti_a.save()
-        for id in self.id_set:
-            self.init_stock(id)
-        self.save.commit()
+        if not self.test_flag:
+            self.clean_tab()
+            self.select_info()
+            for id in self.id_set:
+                self.init_stock(id)
+            self.save.commit()
+        else:
+            self.select_info_test()
+            for id in self.id_set:
+                self.init_stock(id)
+
     def creat_time(self):
         if self.date == None:
             sql = "select DATE_FORMAT(max(trade_date),'%Y-%m-%d') as last_date from stock_trade_data "
@@ -193,8 +201,8 @@ class stock_buffer:
         trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,increase,turnover_rate " \
                     " FROM stock_trade_data " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
-                    "AND stock_id NOT LIKE 'ST%' AND stock_id NOT LIKE '%ST%' " \
-                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%'".format(self.sql_start_date,self.date)
+                    "AND stock_name NOT LIKE 'ST%' AND stock_name NOT LIKE '%ST%' " \
+                    "AND stock_id NOT like '30%' AND  stock_id NOT like '68%'".format(self.sql_start_date,self.date)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
         self.trade_df.fillna('',inplace=True)
@@ -202,6 +210,18 @@ class stock_buffer:
         #test
         # self.id_set = ('603035','603036')
         # print(self.df.columns)
+    #指定交易数据，用于指定测试验证
+    def select_info_test(self):
+        start_date = '2022-01-01'
+        end_date = '2022-12-19'
+        trade_sql = "select stock_id,stock_name,high_price,low_price,open_price,close_price,trade_date,increase,turnover_rate " \
+                    " FROM stock_trade_data " \
+                    "where trade_date >= '{0}' and trade_date <= '{1}' " \
+                    "AND stock_id in ('002031','') ".format(start_date,end_date)
+        print('trade_sql:{}'.format(trade_sql))
+        self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
+        self.trade_df.fillna('',inplace=True)
+        self.id_set = set(self.trade_df['stock_id'].tolist())
     def init_stock(self,id):
         single_df = self.trade_df.loc[self.trade_df.stock_id == id]
         single_df.reset_index(inplace=True)
@@ -247,7 +267,9 @@ def history(start_date,end_date):
 
 if __name__ == '__main__':
     date =None#'2021-02-01' #'2021-01-20'
+    # st_buff = stock_buffer(date,test_flag = True)
     st_buff = stock_buffer(date)
     st_buff.init_buffer()
-    # history(start_date= '2022-02-16', end_date= '2022-04-14')
+    # history(start_date= '2022-01-01', end_date= '2023-01-01')
     print('completed.')
+
